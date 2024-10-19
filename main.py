@@ -1,6 +1,29 @@
 import tkinter as tk
 from enum import Enum, auto
+import math
 
+class Signaling:
+    def __init__(self, fsm):
+        self.fsm = fsm
+        #   Файл с сигнализацией
+        self.file_name = "alarm.wav"
+        self.playing_audio = False
+
+    def update(self):
+        if (self.fsm.state == State.THREAT_FAILURE or self.fsm.state == State.MALFUNCTION) and not self.playing_audio:
+            self.play_audio()
+
+        if (not self.fsm.state == State.THREAT_FAILURE and not self.fsm.state == State.MALFUNCTION) and  self.playing_audio:
+            self.stop_audio()
+
+    def play_audio(self):
+        self.playing_audio = True
+        winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP| winsound.SND_ASYNC)
+
+
+    def stop_audio(self):
+        self.playing_audio = False
+        winsound.PlaySound(None, winsound.SND_PURGE)
 
 class State(Enum):
     OFF = ("ОТКЛЮЧЕН", auto())
@@ -42,18 +65,17 @@ class Refrigerator:
         self.max_temperature = self.temp_outside
         self.min_temperature = -18
 
-    # TODO: Сделать плавное увеличение и уменьшение температуры.
     def cool(self):
-        self.temperature = max(self.target_temperature, self.temperature - 1)
+        self.temperature = max(self.target_temperature, self.temperature - (1 / math.sqrt(self.temp_outside - self.temperature + 1)))
 
     def low_cool(self):
-        self.temperature = min(self.target_temperature, self.temperature + 1)
+        self.temperature = min(self.target_temperature, self.temperature + 0.2 * math.sqrt(self.temp_outside - self.temperature + 1))
 
     def high_cool(self):
-        self.temperature = max(self.target_temperature, self.temperature - 1)
+        self.temperature = max(self.target_temperature, self.temperature - (1 / math.sqrt(self.temp_outside - self.temperature + 1)))
 
     def turn_off(self):
-        self.temperature = min(self.temp_outside, self.temperature + 1)
+        self.temperature = min(self.temp_outside, self.temperature + 0.2 * math.sqrt(self.temp_outside - self.temperature + 1))
 
     def defrost(self):
         self.temperature = min(self.temp_outside, self.temperature + 1)
@@ -196,6 +218,7 @@ class RefrigeratorApp:
         self.refrigerator = Refrigerator(self.temp_outside)
         self.fsm = RefrigeratorFSM(self.refrigerator)
         self.timer = Timer(self.fsm)
+        self.signaling = Signaling(self.fsm)
 
         self.pos_x = 250
         self.pos_y = 50
@@ -354,6 +377,7 @@ class RefrigeratorApp:
 
         self.fsm.update()
         self.timer.update()
+        self.signaling.update()
         self.root.after(1000, self.update)
 
     def open_door(self):

@@ -1,6 +1,7 @@
 import tkinter as tk
 from enum import Enum, auto
 import math
+import winsound
 
 class Signaling:
     def __init__(self, fsm):
@@ -184,14 +185,14 @@ class Timer:
             return
         self.time += 1
 
-        # if self.time > 30:
-        #     self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_30)
-        # elif self.time > 120:
-        #     self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_120)
-        if self.time > 3:
+        if self.time > 30:
             self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_30)
-        if self.time > 10:
+        elif self.time > 120:
             self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_120)
+        # if self.time > 3:
+        #     self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_30)
+        # if self.time > 10:
+        #     self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_120)
 
     def start(self):
         self.is_started = True

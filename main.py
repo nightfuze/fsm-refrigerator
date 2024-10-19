@@ -1,42 +1,31 @@
 import math
-import threading
 import tkinter as tk
 from enum import Enum, auto
-import pyaudio
-import wave
+import winsound
+
 
 class Signaling:
     def __init__(self, fsm):
         self.fsm = fsm
         #   Файл с сигнализацией
-        self.audio_file = wave.open("alarm.wav")
-        self.audio = pyaudio.PyAudio()
+        self.file_name = "alarm.wav"
         self.playing_audio = False
-        self.out_stream = self.audio.open(format=self.audio.get_format_from_width(self.audio_file.getsampwidth()),
-                                channels=self.audio_file.getnchannels(),rate=self.audio_file.getframerate(),
-                                output=True)
 
     def update(self):
-        if self.fsm.state == State.THREAT_FAILURE or self.fsm.state == State.MALFUNCTION and not self.playing_audio:
-            self.play_thread = threading.Thread(target=self.play_audio(),args=(),daemon=True)
-            self.play_thread.start()
-        if not self.fsm.state == State.THREAT_FAILURE and not self.fsm.state == State.MALFUNCTION and  self.playing_audio:
+        if (self.fsm.state == State.THREAT_FAILURE or self.fsm.state == State.MALFUNCTION) and not self.playing_audio:
+            self.play_audio()
+
+        if (not self.fsm.state == State.THREAT_FAILURE and not self.fsm.state == State.MALFUNCTION) and  self.playing_audio:
             self.stop_audio()
 
     def play_audio(self):
         self.playing_audio = True
-        self.audio_file.rewind()  # Вернуться к началу файла
-        data = self.audio_file.readframes(1024)
-        while data:
-            self.out_stream.write(data)
-            data = self.audio_file.readframes(1024)
+        winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP| winsound.SND_ASYNC)
 
 
     def stop_audio(self):
         self.playing_audio = False
-        self.out_stream.stop_stream()
-        self.out_stream.close()
-        self.audio.terminate()
+        winsound.PlaySound(None, winsound.SND_PURGE)
 
 class State(Enum):
     OFF = ("ОТКЛЮЧЕН", auto())
@@ -142,12 +131,16 @@ class RefrigeratorFSM:
         elif self.state == State.THREAT_FAILURE:
             if signal == Signal.DOOR_OPEN_MORE_THAN_120:
                 self.state = State.MALFUNCTION
-
+            #   Логика для выключения звуковой сигналки
+            if signal == Signal.CLOSE_DOOR:
+                self.state = State.COOLING
         # Из разморозки во включенное состояние
         elif self.state == State.DEFROSTING:
             if signal == signal.TURN_ON and not self.refrigerator.is_door_open:
                 self.state = State.COOLING
                 self.refrigerator.cool()
+
+
 
         if self.state != State.OFF:
             if signal == Signal.INCREASE_TEMPERATURE:
@@ -414,13 +407,18 @@ class RefrigeratorApp:
         self.signaling.update()
         self.root.after(1000, self.update)
 
+
     def open_door(self):
         if not self.refrigerator.is_door_open:
+            #   Отправка сигнала
+            self.fsm.send_signal(Signal.OPEN_DOOR)
             self.refrigerator.open_door()
             self.timer.start()
 
     def close_door(self):
         if self.refrigerator.is_door_open:
+            #   Отправка сигнала
+            self.fsm.send_signal(Signal.CLOSE_DOOR)
             self.refrigerator.close_door()
             self.timer.stop()
 

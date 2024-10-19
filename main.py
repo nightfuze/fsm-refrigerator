@@ -61,10 +61,9 @@ class Refrigerator:
         self.target_temperature = 0
         self.temp_outside = initial_temperature
         self.is_door_open = False
-        self.is_light_on = False
         self.is_turn_on = False
-        self.max_temperature = self.temp_outside
-        self.min_temperature = -18
+        self.max_temperature = 18
+        self.min_temperature = -6
 
     def cool(self):
         self.temperature = max(self.target_temperature, self.temperature - (1 / math.sqrt(self.temp_outside - self.temperature + 1)))
@@ -131,11 +130,14 @@ class RefrigeratorFSM:
             if signal == Signal.CLOSE_DOOR:
                 self.state = State.OFF
 
-        if self.state != State.OFF:
+        if self.state != State.OFF and (self.state != State.MALFUNCTION or self.state != State.THREAT_FAILURE):
             if signal == Signal.INCREASE_TEMPERATURE:
                 self.refrigerator.increase_temp()
             elif signal == Signal.DECREASE_TEMPERATURE:
                 self.refrigerator.decrease_temp()
+
+        if signal == Signal.TURN_OFF:
+            self.state = State.OFF
 
     def update(self):
         # if self.state != State.OFF or self.state != State.MALFUNCTION or self.state != State.THREAT_FAILURE:
@@ -148,6 +150,8 @@ class RefrigeratorFSM:
 
         if self.state == State.OFF:
             self.refrigerator.turn_off()
+        elif not self.refrigerator.is_turn_on:
+            self.refrigerator.turn_on()
 
         if (
                 self.state == State.LOW_COOLING or
@@ -185,14 +189,14 @@ class Timer:
             return
         self.time += 1
 
-        if self.time > 30:
-            self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_30)
-        elif self.time > 120:
-            self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_120)
-        # if self.time > 3:
+        # if self.time > 30:
         #     self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_30)
-        # if self.time > 10:
+        # elif self.time > 120:
         #     self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_120)
+        if self.time > 3:
+            self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_30)
+        if self.time > 10:
+            self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_120)
 
     def start(self):
         self.is_started = True
@@ -346,15 +350,15 @@ class RefrigeratorApp:
         self.temp_text = self.canvas.create_text(temp_text_x, temp_text_y,
                                                  text=f"{self.refrigerator.temperature:.0f}°C", fill='green')
 
-        # status_indicator_x = self.pos_x + self.width - self.padding - 40
-        # status_indicator_y = self.pos_y + self.padding + 10
-        # status_indicator_width = 30
-        # self.status_indicator = self.canvas.create_oval(
-        #     status_indicator_x, status_indicator_y,
-        #     status_indicator_x + status_indicator_width,
-        #     status_indicator_y + status_indicator_width,
-        #     fill='cyan'
-        # )
+        status_indicator_x = self.pos_x + self.width - self.padding - 40
+        status_indicator_y = self.pos_y + self.padding + 10
+        status_indicator_width = 30
+        self.status_indicator = self.canvas.create_oval(
+            status_indicator_x, status_indicator_y,
+            status_indicator_x + status_indicator_width,
+            status_indicator_y + status_indicator_width,
+            fill='cyan'
+        )
 
     def update(self):
         self.draw()
@@ -365,16 +369,14 @@ class RefrigeratorApp:
 
         if self.refrigerator.temperature <= 0:
             color = 'cyan'
-        elif self.refrigerator.temperature >= 10:
-            color = 'red'
         else:
             color = 'lightgreen'
         self.canvas.itemconfig(self.temp_text, fill=color)
 
-        # if not self.refrigerator.is_turn_on:
-        #     self.canvas.itemconfig(self.status_indicator, fill='white')
-        # elif self.refrigerator.is_turn_on:
-        #     self.canvas.itemconfig(self.status_indicator, fill='green')
+        if not self.refrigerator.is_turn_on:
+            self.canvas.itemconfig(self.status_indicator, fill='white')
+        elif self.refrigerator.is_turn_on:
+            self.canvas.itemconfig(self.status_indicator, fill='green')
 
         self.fsm.update()
         self.timer.update()

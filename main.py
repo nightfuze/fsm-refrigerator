@@ -34,11 +34,13 @@ class Signal(Enum):
 class Refrigerator:
     def __init__(self, initial_temperature):
         self.temperature = initial_temperature
-        self.target_temperature = initial_temperature
+        self.target_temperature = 0
         self.temp_outside = initial_temperature
         self.is_door_open = False
         self.is_light_on = False
         self.is_turn_on = False
+        self.max_temperature = self.temp_outside
+        self.min_temperature = -18
 
     # TODO: Сделать плавное увеличение и уменьшение температуры.
     def cool(self):
@@ -57,10 +59,10 @@ class Refrigerator:
         self.temperature = min(self.temp_outside, self.temperature + 1)
 
     def increase_temp(self):
-        self.target_temperature += 1
+        self.target_temperature = min(self.max_temperature, self.target_temperature + 1)
 
     def decrease_temp(self):
-        self.target_temperature -= 1
+        self.target_temperature = max(self.min_temperature, self.target_temperature - 1)
 
     def open_door(self):
         self.is_door_open = True
@@ -102,6 +104,9 @@ class RefrigeratorFSM:
         elif self.state == State.THREAT_FAILURE:
             if signal == Signal.DOOR_OPEN_MORE_THAN_120:
                 self.state = State.MALFUNCTION
+        elif self.state == State.DEFROSTING:
+            if signal == Signal.CLOSE_DOOR:
+                self.state = State.OFF
 
         if self.state != State.OFF:
             if signal == Signal.INCREASE_TEMPERATURE:
@@ -121,21 +126,26 @@ class RefrigeratorFSM:
         if self.state == State.OFF:
             self.refrigerator.turn_off()
 
-        elif self.state == State.COOLING:
+        if (
+                self.state == State.LOW_COOLING or
+                self.state == State.HIGH_COOLING or
+                self.state == State.COOLING
+        ):
             if self.refrigerator.temperature == self.refrigerator.target_temperature:
-                self.refrigerator.cool()
+                self.state = State.COOLING
+            elif self.refrigerator.temperature < self.refrigerator.target_temperature:
+                self.state = State.LOW_COOLING
+            elif self.refrigerator.temperature > self.refrigerator.target_temperature:
+                self.state = State.HIGH_COOLING
+
+        if self.state == State.COOLING:
+            self.refrigerator.cool()
 
         elif self.state == State.LOW_COOLING:
-            if self.refrigerator.temperature < self.refrigerator.target_temperature:
-                self.refrigerator.low_cool()
-            elif self.refrigerator.temperature == self.refrigerator.target_temperature:
-                self.state= State.COOLING
+            self.refrigerator.low_cool()
 
         elif self.state == State.HIGH_COOLING:
-            if self.refrigerator.temperature > self.refrigerator.target_temperature:
-                self.refrigerator.high_cool()
-            elif self.refrigerator.temperature == self.refrigerator.target_temperature:
-                self.state= State.COOLING
+            self.refrigerator.high_cool()
 
         elif self.state == State.DEFROSTING:
             self.refrigerator.defrost()
@@ -348,11 +358,13 @@ class RefrigeratorApp:
 
     def open_door(self):
         if not self.refrigerator.is_door_open:
+            self.fsm.send_signal(Signal.OPEN_DOOR)
             self.refrigerator.open_door()
             self.timer.start()
 
     def close_door(self):
         if self.refrigerator.is_door_open:
+            self.fsm.send_signal(Signal.CLOSE_DOOR)
             self.refrigerator.close_door()
             self.timer.stop()
 

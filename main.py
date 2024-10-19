@@ -1,7 +1,10 @@
+import math
 import tkinter as tk
 from enum import Enum, auto
-import math
-import winsound
+from tkinter import PhotoImage
+
+
+# import winsound
 
 class Signaling:
     def __init__(self, fsm):
@@ -14,17 +17,18 @@ class Signaling:
         if (self.fsm.state == State.THREAT_FAILURE or self.fsm.state == State.MALFUNCTION) and not self.playing_audio:
             self.play_audio()
 
-        if (not self.fsm.state == State.THREAT_FAILURE and not self.fsm.state == State.MALFUNCTION) and  self.playing_audio:
+        if (
+                not self.fsm.state == State.THREAT_FAILURE and not self.fsm.state == State.MALFUNCTION) and self.playing_audio:
             self.stop_audio()
 
     def play_audio(self):
         self.playing_audio = True
-        winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP| winsound.SND_ASYNC)
-
+        winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
 
     def stop_audio(self):
         self.playing_audio = False
         winsound.PlaySound(None, winsound.SND_PURGE)
+
 
 class State(Enum):
     OFF = ("ОТКЛЮЧЕН", auto())
@@ -66,16 +70,20 @@ class Refrigerator:
         self.min_temperature = -6
 
     def cool(self):
-        self.temperature = max(self.target_temperature, self.temperature - (1 / math.sqrt(self.temp_outside - self.temperature + 1)))
+        self.temperature = max(self.target_temperature,
+                               self.temperature - (1 / math.sqrt(self.temp_outside - self.temperature + 1)))
 
     def low_cool(self):
-        self.temperature = min(self.target_temperature, self.temperature + 0.2 * math.sqrt(self.temp_outside - self.temperature + 1))
+        self.temperature = min(self.target_temperature,
+                               self.temperature + 0.2 * math.sqrt(self.temp_outside - self.temperature + 1))
 
     def high_cool(self):
-        self.temperature = max(self.target_temperature, self.temperature - (1 / math.sqrt(self.temp_outside - self.temperature + 1)))
+        self.temperature = max(self.target_temperature,
+                               self.temperature - (1 / math.sqrt(self.temp_outside - self.temperature + 1)))
 
     def turn_off(self):
-        self.temperature = min(self.temp_outside, self.temperature + 0.2 * math.sqrt(self.temp_outside - self.temperature + 1))
+        self.temperature = min(self.temp_outside,
+                               self.temperature + 0.2 * math.sqrt(self.temp_outside - self.temperature + 1))
 
     def defrost(self):
         self.temperature = min(self.temp_outside, self.temperature + 1)
@@ -225,21 +233,18 @@ class RefrigeratorApp:
         self.timer = Timer(self.fsm)
         self.signaling = Signaling(self.fsm)
 
-        self.pos_x = 250
-        self.pos_y = 50
-        self.width = 200
-        self.height = 400
-        self.padding = 10
+        self.refrigerator_open_img = PhotoImage(file="refrigerator_open.png")
+        self.refrigerator_close_img = PhotoImage(file="refrigerator_close.png")
 
-        self.door_handle_x = self.pos_x + self.width - self.padding * 4
-        self.door_handle_y = self.pos_y + self.height / 2
-        self.door_handle_width = 15
-        self.door_handle_height = 80
+        self.temp_display_width = 80
+        self.temp_display_height = 30
+        self.temp_display_x = 215
+        self.temp_display_y = 55
 
         container_frame = tk.Frame(root)
         container_frame.pack()
 
-        self.canvas = tk.Canvas(container_frame, width=500, height=500)
+        self.canvas = tk.Canvas(container_frame, width=512, height=512)
         self.canvas.pack(side=tk.LEFT)
 
         control_frame = tk.Frame(container_frame)
@@ -270,6 +275,8 @@ class RefrigeratorApp:
         for text, command in buttons:
             tk.Button(control_frame, text=text, command=command).pack(fill=tk.X)
 
+        self.canvas.bind("<Button-1>", self.on_click)
+
         self.draw()
         self.update()
 
@@ -285,73 +292,25 @@ class RefrigeratorApp:
             self.draw_close_door()
 
     def draw_open_door(self):
-        self.canvas.create_rectangle(
-            self.pos_x, self.pos_y,
-            self.pos_x + self.width,
-            self.pos_y + self.height,
-            fill='lightgray', width=2
-        )
-        self.canvas.create_rectangle(
-            self.pos_x + self.padding,
-            self.pos_y + self.padding,
-            self.pos_x + self.width - self.padding,
-            self.pos_y + self.height - self.padding,
-            fill='white', width=2
-        )
-        pos_x = self.pos_x - self.width
-        self.canvas.create_rectangle(
-            pos_x, self.pos_y,
-            pos_x + self.width,
-            self.pos_y + self.height,
-            fill='lightgray', width=2
-        )
-        self.canvas.create_rectangle(
-            pos_x + self.padding,
-            self.pos_y + self.padding,
-            pos_x + self.width - self.padding,
-            self.pos_y + self.height - self.padding,
-            fill='white', width=2
-        )
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.refrigerator_open_img)
 
     def draw_close_door(self):
-        self.canvas.create_rectangle(
-            self.pos_x, self.pos_y,
-            self.pos_x + self.width,
-            self.pos_y + self.height,
-            fill='lightgray', width=2
-        )
-        self.canvas.create_rectangle(
-            self.pos_x + self.padding,
-            self.pos_y + self.padding,
-            self.pos_x + self.width - self.padding,
-            self.pos_y + self.height - self.padding,
-            fill='white', width=2
-        )
-        self.canvas.create_rectangle(
-            self.door_handle_x, self.door_handle_y,
-            self.door_handle_x + self.door_handle_width,
-            self.door_handle_y + self.door_handle_height,
-            fill='gray', width=1
-        )
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.refrigerator_close_img)
 
-        temp_display_x = self.pos_x + self.padding + 10
-        temp_display_y = self.pos_y + self.padding + 10
-        temp_display_width = 80
-        temp_display_height = 30
         self.temp_display = self.canvas.create_rectangle(
-            temp_display_x, temp_display_y,
-            temp_display_width + temp_display_x,
-            temp_display_height + temp_display_y,
+            self.temp_display_x, self.temp_display_y,
+            self.temp_display_width + self.temp_display_x,
+            self.temp_display_height + self.temp_display_y,
             fill='black'
         )
 
-        temp_text_x = temp_display_x + temp_display_width / 2
-        temp_text_y = temp_display_y + temp_display_height / 2
+        temp_text_x = self.temp_display_x + self.temp_display_width / 2
+        temp_text_y = self.temp_display_y + self.temp_display_height / 2
         self.temp_text = self.canvas.create_text(temp_text_x, temp_text_y,
                                                  text=f"{self.refrigerator.temperature:.0f}°C", fill='green')
 
-        status_indicator_x = self.pos_x + self.width - self.padding - 40
-        status_indicator_y = self.pos_y + self.padding + 10
+        status_indicator_x = 310
+        status_indicator_y = 55
         status_indicator_width = 30
         self.status_indicator = self.canvas.create_oval(
             status_indicator_x, status_indicator_y,
@@ -406,6 +365,9 @@ class RefrigeratorApp:
 
     def decrease_temp(self):
         self.fsm.send_signal(Signal.DECREASE_TEMPERATURE)
+
+    def on_click(self, event):
+        print(event.x, event.y)
 
 
 if __name__ == "__main__":

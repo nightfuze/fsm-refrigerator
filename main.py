@@ -14,11 +14,10 @@ class Signaling:
         self.playing_audio = False
 
     def update(self):
-        if (self.fsm.state == State.THREAT_FAILURE or self.fsm.state == State.MALFUNCTION) and not self.playing_audio:
+        if not self.fsm.state == State.OFF and ((self.fsm.state == State.THREAT_FAILURE) and not self.playing_audio):
             self.play_audio()
 
-        if (
-                not self.fsm.state == State.THREAT_FAILURE and not self.fsm.state == State.MALFUNCTION) and self.playing_audio:
+        if self.fsm.state == State.OFF or ((not self.fsm.state == State.THREAT_FAILURE) and self.playing_audio and not self.fsm.refrigerator.is_door_open):
             self.stop_audio()
 
     def play_audio(self):
@@ -81,7 +80,7 @@ class Refrigerator:
         self.temperature = max(self.target_temperature,
                                self.temperature - (1 / math.sqrt(self.temp_outside - self.temperature + 1)))
 
-    def turn_off(self):
+    def cool_turn_off(self):
         self.temperature = min(self.temp_outside,
                                self.temperature + 0.2 * math.sqrt(self.temp_outside - self.temperature + 1))
 
@@ -113,6 +112,8 @@ class RefrigeratorFSM:
         self.refrigerator = refrigerator
 
     def send_signal(self, signal):
+        if self.state == State.MALFUNCTION:
+            return
         if self.state == State.OFF:
             if signal == Signal.TURN_ON:
                 self.state = State.COOLING
@@ -131,9 +132,14 @@ class RefrigeratorFSM:
         elif self.state == State.LOW_COOLING:
             if signal == Signal.DOOR_OPEN_MORE_THAN_30:
                 self.state = State.THREAT_FAILURE
+        elif self.state == State.HIGH_COOLING:
+            if signal == Signal.DOOR_OPEN_MORE_THAN_30:
+                self.state = State.THREAT_FAILURE
         elif self.state == State.THREAT_FAILURE:
             if signal == Signal.DOOR_OPEN_MORE_THAN_120:
                 self.state = State.MALFUNCTION
+            if signal == Signal.CLOSE_DOOR:
+                self.state = State.COOLING
         elif self.state == State.DEFROSTING:
             if signal == Signal.CLOSE_DOOR:
                 self.state = State.OFF
@@ -158,6 +164,7 @@ class RefrigeratorFSM:
 
         if self.state == State.OFF:
             self.refrigerator.turn_off()
+            self.refrigerator.cool_turn_off()
         elif not self.refrigerator.is_turn_on:
             self.refrigerator.turn_on()
 
@@ -184,6 +191,8 @@ class RefrigeratorFSM:
 
         elif self.state == State.DEFROSTING:
             self.refrigerator.defrost()
+        elif self.state == State.MALFUNCTION:
+            self.refrigerator.cool_turn_off()
 
 
 class Timer:
@@ -247,8 +256,10 @@ class RefrigeratorApp:
         self.canvas = tk.Canvas(container_frame, width=512, height=512)
         self.canvas.pack(side=tk.LEFT)
 
-        control_frame = tk.Frame(container_frame)
-        control_frame.pack(side=tk.RIGHT, padx=10)
+        control_frame = tk.Frame(container_frame,width=300,height=512)
+        #control_frame = tk.Frame(container_frame)
+        control_frame.pack_propagate(False)
+        control_frame.pack(side=tk.RIGHT,pady=10, padx=10)
 
         self.state_label = tk.Label(control_frame, text=f"Состояние: {self.fsm.state.name_ru}")
         self.state_label.pack(anchor=tk.W)
@@ -332,9 +343,9 @@ class RefrigeratorApp:
             color = 'lightgreen'
         self.canvas.itemconfig(self.temp_text, fill=color)
 
-        if not self.refrigerator.is_turn_on:
+        if  self.fsm.state == State.OFF or self.fsm.state == State.MALFUNCTION:
             self.canvas.itemconfig(self.status_indicator, fill='white')
-        elif self.refrigerator.is_turn_on:
+        elif  self.fsm.state != State.OFF or  self.fsm.state != State.MALFUNCTION:
             self.canvas.itemconfig(self.status_indicator, fill='green')
 
         self.fsm.update()

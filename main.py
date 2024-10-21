@@ -357,6 +357,7 @@ class RefrigeratorApp:
         if not self.refrigerator.is_door_open:
             self.fsm.send_signal(Signal.OPEN_DOOR)
             self.refrigerator.open_door()
+        if not self.fsm.state == State.OFF:
             self.timer.start()
 
     def close_door(self):

@@ -138,7 +138,7 @@ class RefrigeratorFSM:
         elif self.state == State.THREAT_FAILURE:
             if signal == Signal.DOOR_OPEN_MORE_THAN_120:
                 self.state = State.MALFUNCTION
-            if signal == Signal.CLOSE_DOOR:
+            elif signal == Signal.CLOSE_DOOR:
                 self.state = State.COOLING
         elif self.state == State.DEFROSTING:
             if signal == Signal.CLOSE_DOOR:
@@ -214,7 +214,8 @@ class Timer:
             self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_30)
         if self.time > 10:
             self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_120)
-
+        if self.fsm.state == State.OFF:
+            self.stop()
     def start(self):
         self.is_started = True
         self.reset()
@@ -368,6 +369,8 @@ class RefrigeratorApp:
 
     def turn_on(self):
         self.fsm.send_signal(Signal.TURN_ON)
+        if  self.refrigerator.is_door_open:
+            self.timer.start()
 
     def turn_off(self):
         self.fsm.send_signal(Signal.TURN_OFF)

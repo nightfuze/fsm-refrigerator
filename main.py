@@ -1,13 +1,12 @@
 import math
+import random
 import tkinter as tk
+import winsound
 from datetime import datetime
 from enum import Enum, auto
-import random
 from tkinter import PhotoImage, messagebox
 from tkinter import ttk
 
-
-# import winsound
 
 class Signaling:
     def __init__(self, fsm):
@@ -26,11 +25,11 @@ class Signaling:
 
     def play_audio(self):
         self.playing_audio = True
-        # winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
+        winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
 
     def stop_audio(self):
         self.playing_audio = False
-        # winsound.PlaySound(None, winsound.SND_PURGE)
+        winsound.PlaySound(None, winsound.SND_PURGE)
 
 
 class State(Enum):
@@ -353,7 +352,6 @@ class AddProductWindow(BaseProductWindow):
         self.door_combo = ttk.Combobox(product_frame, values=["Холодильник", "Морозилка"], state="readonly")
         self.door_combo.pack(fill=tk.X)
         self.door_combo.current(0)
-
 
         self.expiry_entry, self.expiry_error = self.create_label_entry("Срок годности (ДД.ММ.ГГГГ):", self.main_frame)
         self.expiry_entry.bind('<KeyRelease>', self.validate_expiry)

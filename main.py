@@ -1,7 +1,7 @@
 import math
 import random
 import tkinter as tk
-import winsound
+# import winsound
 from datetime import datetime
 from enum import Enum, auto
 from tkinter import PhotoImage, messagebox
@@ -25,11 +25,11 @@ class Signaling:
 
     def play_audio(self):
         self.playing_audio = True
-        winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
+        # winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
 
     def stop_audio(self):
         self.playing_audio = False
-        winsound.PlaySound(None, winsound.SND_PURGE)
+        # winsound.PlaySound(None, winsound.SND_PURGE)
 
 
 class State(Enum):
@@ -65,8 +65,11 @@ class Refrigerator:
     def __init__(self, initial_temperature):
         self.temperature = initial_temperature
         self.target_temperature = 0
+        self.freezer_temperature = initial_temperature
+        self.freezer_target_temperature = -18
         self.temp_outside = initial_temperature
         self.is_door_open = False
+        self.is_freezer_door_open = False
         self.is_turn_on = False
         self.max_temperature = 18
         self.min_temperature = -6
@@ -74,21 +77,33 @@ class Refrigerator:
     def cool(self):
         self.temperature = max(self.target_temperature,
                                self.temperature - (1 / math.sqrt(self.temp_outside - self.temperature + 1)))
+        self.freezer_temperature = max(self.freezer_target_temperature, self.freezer_temperature - (1 / math.sqrt(
+            self.temp_outside - self.freezer_temperature + 1
+        )))
 
     def low_cool(self):
         self.temperature = min(self.target_temperature,
                                self.temperature + 0.2 * math.sqrt(self.temp_outside - self.temperature + 1))
+        self.freezer_temperature = min(self.freezer_target_temperature, self.freezer_temperature + 0.2 * math.sqrt(
+            self.temp_outside - self.freezer_temperature + 1
+        ))
 
     def high_cool(self):
         self.temperature = max(self.target_temperature,
                                self.temperature - (1 / math.sqrt(self.temp_outside - self.temperature + 1)))
+        self.freezer_temperature = max(self.freezer_target_temperature, self.freezer_temperature - (1 / math.sqrt(
+            self.temp_outside - self.freezer_temperature + 1
+        )))
 
     def cool_turn_off(self):
         self.temperature = min(self.temp_outside,
                                self.temperature + 0.2 * math.sqrt(self.temp_outside - self.temperature + 1))
+        self.freezer_temperature = min(self.temp_outside, self.freezer_temperature + 0.2 * math.sqrt(
+            self.temp_outside - self.freezer_temperature + 1))
 
     def defrost(self):
         self.temperature = min(self.temp_outside, self.temperature + 1)
+        self.freezer_temperature = min(self.freezer_target_temperature, self.freezer_temperature + 1)
 
     def increase_temp(self):
         self.target_temperature = min(self.max_temperature, self.target_temperature + 1)
@@ -102,11 +117,23 @@ class Refrigerator:
     def close_door(self):
         self.is_door_open = False
 
+    def open_freezer_door(self):
+        self.is_freezer_door_open = True
+
+    def close_freezer_door(self):
+        self.is_freezer_door_open = False
+
     def turn_on(self):
         self.is_turn_on = True
 
     def turn_off(self):
         self.is_turn_on = False
+
+    def is_need_high_cool(self):
+        return self.temperature > self.target_temperature or self.freezer_temperature > self.freezer_target_temperature
+
+    def is_need_low_cool(self):
+        return self.temperature < self.target_temperature or self.freezer_temperature < self.freezer_target_temperature
 
 
 class RefrigeratorFSM:
@@ -176,12 +203,12 @@ class RefrigeratorFSM:
                 self.state == State.HIGH_COOLING or
                 self.state == State.COOLING
         ):
-            if self.refrigerator.temperature == self.refrigerator.target_temperature:
-                self.state = State.COOLING
-            elif self.refrigerator.temperature < self.refrigerator.target_temperature:
-                self.state = State.LOW_COOLING
-            elif self.refrigerator.temperature > self.refrigerator.target_temperature:
+            if self.refrigerator.is_need_high_cool():
                 self.state = State.HIGH_COOLING
+            elif self.refrigerator.is_need_low_cool():
+                self.state = State.LOW_COOLING
+            else:
+                self.state = State.COOLING
 
         if self.state == State.COOLING:
             self.refrigerator.cool()
@@ -359,7 +386,6 @@ class AddProductWindow(BaseProductWindow):
         else:
             self.clear_error('expiry', self.expiry_error)
 
-
     def add_product(self):
         self.validate_expiry()
 
@@ -487,6 +513,9 @@ class RefrigeratorApp:
         self.temp_label = tk.Label(control_frame, text=f"Текущая температура: {self.refrigerator.temperature}°C")
         self.temp_label.pack(anchor=tk.W)
 
+        self.freezer_temp_label = tk.Label(control_frame, text=f"Текущая температура морозилки: {self.refrigerator.freezer_temperature}°C")
+        self.freezer_temp_label.pack(anchor=tk.W)
+
         buttons = [
             (Signal.TURN_ON.name_ru, self.turn_on),
             (Signal.TURN_OFF.name_ru, self.turn_off),
@@ -557,7 +586,7 @@ class RefrigeratorApp:
         temp_text_x = self.temp_display_x + self.temp_display_width / 2
         temp_text_y = self.temp_display_y + self.temp_display_height / 2
         self.temp_text = self.canvas.create_text(temp_text_x, temp_text_y,
-                                                 text=f"{self.refrigerator.temperature:.0f}°C", fill='green')
+                                                 text=f"{self.refrigerator.temperature:.0f}°C")
 
         # status_indicator_x = 36
         # status_indicator_y = 183
@@ -575,6 +604,7 @@ class RefrigeratorApp:
         self.state_label.config(text=f"Состояние: {self.fsm.state.name_ru}")
         self.temp_label.config(text=f"Текущая температура: {self.refrigerator.temperature:.0f}°C")
         self.target_temp_label.config(text=f"Заданная температура: {self.refrigerator.target_temperature:.0f}°C")
+        self.freezer_temp_label.config(text=f"Текущая температура морозилки: {self.refrigerator.freezer_temperature:.0f}°C")
 
         if self.refrigerator.temperature <= 0:
             color = 'cyan'

@@ -2,7 +2,7 @@ import math
 import random
 import tkinter as tk
 import uuid
-# import winsound
+import winsound
 from datetime import datetime
 from enum import Enum, auto
 from tkinter import PhotoImage, messagebox
@@ -26,11 +26,11 @@ class Signaling:
 
     def play_audio(self):
         self.playing_audio = True
-        # winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
+        winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
 
     def stop_audio(self):
         self.playing_audio = False
-        # winsound.PlaySound(None, winsound.SND_PURGE)
+        winsound.PlaySound(None, winsound.SND_PURGE)
 
 
 class State(Enum):
@@ -321,8 +321,8 @@ class BaseProductWindow(tk.Toplevel):
         w, h = 400, 400
         ws = root.winfo_screenwidth()
         hs = root.winfo_screenheight()
-        x = (ws/2) - (w/2)
-        y = (hs/2) - (h/2)
+        x = (ws / 2) - (w / 2)
+        y = (hs / 2) - (h / 2)
         self.geometry('%dx%d+%d+%d' % (w, h, x, y))
         self.title(title)
         self.resizable(False, False)
@@ -486,8 +486,8 @@ class RefrigeratorApp:
         w, h = 1280, 800
         ws = root.winfo_screenwidth()
         hs = root.winfo_screenheight()
-        x = (ws/2) - (w/2)
-        y = (hs/2) - (h/2)
+        x = (ws / 2) - (w / 2)
+        y = (hs / 2) - (h / 2)
         self.root.geometry('%dx%d+%d+%d' % (w, h, x, y))
         self.root.title("Кончный Автомат Холодильника")
 
@@ -595,12 +595,6 @@ class RefrigeratorApp:
         self.target_temp_label.config(text=f"Заданная температура: {self.refrigerator.target_temperature:.0f}°C")
         self.freezer_temp_label.config(
             text=f"Текущая температура морозилки: {self.refrigerator.freezer_temperature:.0f}°C")
-
-        if self.refrigerator.temperature <= 0:
-            color = 'cyan'
-        else:
-            color = 'lightgreen'
-        self.canvas.itemconfig(self.temp_text, fill=color)
 
         # if  self.fsm.state == State.OFF or self.fsm.state == State.MALFUNCTION:
         #     self.canvas.itemconfig(self.status_indicator, fill='white')
@@ -762,10 +756,14 @@ class RefrigeratorApp:
             fill='black'
         )
 
-        temp_text_x = self.temp_display_x + self.temp_display_width / 2
-        temp_text_y = self.temp_display_y + self.temp_display_height / 2
-        self.temp_text = self.canvas.create_text(temp_text_x, temp_text_y,
-                                                 text=f"{self.refrigerator.temperature:.0f}°C")
+        if self.refrigerator.is_turn_on:
+            temp_text_x = self.temp_display_x + self.temp_display_width / 2
+            temp_text_y = self.temp_display_y + self.temp_display_height / 2
+            if self.refrigerator.temperature <= 0:
+                color = 'cyan'
+            else:
+                color = 'lightgreen'
+            self.canvas.create_text(temp_text_x, temp_text_y, text=f"{self.refrigerator.temperature:.0f}°C", fill=color)
 
         # status_indicator_x = 36
         # status_indicator_y = 183

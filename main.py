@@ -2,7 +2,7 @@ import math
 import random
 import tkinter as tk
 import uuid
-# import winsound
+import winsound
 from datetime import datetime
 from enum import Enum, auto
 from tkinter import PhotoImage, messagebox
@@ -26,11 +26,11 @@ class Signaling:
 
     def play_audio(self):
         self.playing_audio = True
-        # winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
+        winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
 
     def stop_audio(self):
         self.playing_audio = False
-        # winsound.PlaySound(None, winsound.SND_PURGE)
+        winsound.PlaySound(None, winsound.SND_PURGE)
 
 
 class State(Enum):

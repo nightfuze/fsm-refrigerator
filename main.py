@@ -2,7 +2,7 @@ import math
 import random
 import tkinter as tk
 import uuid
-import winsound
+# import winsound
 from datetime import datetime
 from enum import Enum, auto
 from tkinter import PhotoImage, messagebox
@@ -26,11 +26,11 @@ class Signaling:
 
     def play_audio(self):
         self.playing_audio = True
-        winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
+        # winsound.PlaySound(self.file_name, winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
 
     def stop_audio(self):
         self.playing_audio = False
-        winsound.PlaySound(None, winsound.SND_PURGE)
+        # winsound.PlaySound(None, winsound.SND_PURGE)
 
 
 class State(Enum):
@@ -318,8 +318,13 @@ class Product:
 class BaseProductWindow(tk.Toplevel):
     def __init__(self, root, title):
         super().__init__(root)
+        w, h = 400, 400
+        ws = root.winfo_screenwidth()
+        hs = root.winfo_screenheight()
+        x = (ws/2) - (w/2)
+        y = (hs/2) - (h/2)
+        self.geometry('%dx%d+%d+%d' % (w, h, x, y))
         self.title(title)
-        self.geometry("400x400")
         self.resizable(False, False)
         self.grab_set()
         self.focus_set()
@@ -478,7 +483,12 @@ class RefrigeratorApp:
         # width = self.root.winfo_screenwidth()
         # height = self.root.winfo_screenheight()
         # self.root.geometry("%dx%d" % (width, height))
-        self.root.geometry("1280x800")
+        w, h = 1280, 800
+        ws = root.winfo_screenwidth()
+        hs = root.winfo_screenheight()
+        x = (ws/2) - (w/2)
+        y = (hs/2) - (h/2)
+        self.root.geometry('%dx%d+%d+%d' % (w, h, x, y))
         self.root.title("Кончный Автомат Холодильника")
 
         self.temp_outside = 25

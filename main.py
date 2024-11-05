@@ -1,6 +1,7 @@
 import math
 import random
 import tkinter as tk
+import uuid
 # import winsound
 from datetime import datetime
 from enum import Enum, auto
@@ -263,14 +264,15 @@ class Product:
     PRODUCTS = ["Молоко", "Яйца", "Колбаса", "Сыр", "Масло подсолнечное", "Варенье", "Пельмени", "Мясо"]
 
     def __init__(self, name, expiry_date):
+        self.id = str(uuid.uuid4())
         self.name = name
         self.expiry_date = expiry_date
 
     def __str__(self):
-        return f"{self.name}, {self.expiry_date}"
+        return f"name:{self.name}, expiry_date:{self.expiry_date}"
 
     def __repr__(self):
-        return f"{self.name}, {self.expiry_date}"
+        return f"name:{self.name}, expiry_date:{self.expiry_date}"
 
     def to_dict(self):
         return {
@@ -416,7 +418,12 @@ class RemoveProductWindow(BaseProductWindow):
         products_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         tk.Label(products_frame, text="Выберите продукты для удаления:").pack(anchor="w")
 
-        self.tree = ttk.Treeview(products_frame, columns=("name", "expiry"), show="headings", selectmode="extended")
+        self.tree = ttk.Treeview(products_frame,
+                                 columns=("id", "name", "expiry"),
+                                 show="headings",
+                                 selectmode="extended",
+                                 displaycolumns=("name", "expiry")
+                                 )
 
         self.tree.heading("name", text="Название")
         self.tree.heading("expiry", text="Срок годности")
@@ -444,6 +451,7 @@ class RemoveProductWindow(BaseProductWindow):
 
         for product in self.products:
             self.tree.insert("", "end", values=(
+                product.id,
                 product.name,
                 product.expiry_date,
             ))
@@ -479,9 +487,23 @@ class RefrigeratorApp:
         self.timer = Timer(self.fsm)
         self.signaling = Signaling(self.fsm)
 
+        self.products = self.load_products()
+
         self.refrigerator_open_img = PhotoImage(file="refrigerator_open.png")
         self.refrigerator_close_off_img = PhotoImage(file="refrigerator_off.png")
         self.refrigerator_close_on_img = PhotoImage(file="refrigerator_on.png")
+
+        self.refrigerator_open_img = PhotoImage(file="refrigerator_open.png")
+        self.refrigerator_close_off_img = PhotoImage(file="refrigerator_off.png")
+        self.refrigerator_close_on_img = PhotoImage(file="refrigerator_on.png")
+        self.image_milk_path = PhotoImage(file="image_food/Empty.png")
+        self.image_kolb_path = PhotoImage(file="image_food/Empty.png")
+        self.image_egg_path = PhotoImage(file="image_food/Empty.png")
+        self.image_cheese_path = PhotoImage(file="image_food/Empty.png")
+        self.image_oil_path = PhotoImage(file="image_food/Empty.png")
+        self.image_jam_path = PhotoImage(file="image_food/Empty.png")
+        self.image_meat_path = PhotoImage(file="image_food/Empty.png")
+        self.image_pelmen_path = PhotoImage(file="image_food/Empty.png")
 
         self.temp_display_width = 80
         self.temp_display_height = 30
@@ -513,7 +535,8 @@ class RefrigeratorApp:
         self.temp_label = tk.Label(control_frame, text=f"Текущая температура: {self.refrigerator.temperature}°C")
         self.temp_label.pack(anchor=tk.W)
 
-        self.freezer_temp_label = tk.Label(control_frame, text=f"Текущая температура морозилки: {self.refrigerator.freezer_temperature}°C")
+        self.freezer_temp_label = tk.Label(control_frame,
+                                           text=f"Текущая температура морозилки: {self.refrigerator.freezer_temperature}°C")
         self.freezer_temp_label.pack(anchor=tk.W)
 
         buttons = [
@@ -537,8 +560,8 @@ class RefrigeratorApp:
         self.expired_products_label = tk.Label(self.expired_products_frame, text="Просроченные продукты:")
         self.expired_products_label.pack(anchor=tk.W)
 
-        for product in self.get_expired_products():
-            tk.Label(self.expired_products_frame, text=f"{product.name} | {product.expiry_date}").pack(anchor=tk.W)
+        self.expired_products = []
+        self.update_expired_products()
 
         self.canvas.bind("<Button-1>", self.on_click)
 
@@ -550,18 +573,164 @@ class RefrigeratorApp:
 
         self.draw_refrigerator()
 
+    def update(self):
+        self.draw()
+
+        self.update_food()
+        if self.refrigerator.is_door_open:
+            self.draw_food()
+
+        self.state_label.config(text=f"Состояние: {self.fsm.state.name_ru}")
+        self.temp_label.config(text=f"Текущая температура: {self.refrigerator.temperature:.0f}°C")
+        self.target_temp_label.config(text=f"Заданная температура: {self.refrigerator.target_temperature:.0f}°C")
+        self.freezer_temp_label.config(
+            text=f"Текущая температура морозилки: {self.refrigerator.freezer_temperature:.0f}°C")
+
+        if self.refrigerator.temperature <= 0:
+            color = 'cyan'
+        else:
+            color = 'lightgreen'
+        self.canvas.itemconfig(self.temp_text, fill=color)
+
+        # if  self.fsm.state == State.OFF or self.fsm.state == State.MALFUNCTION:
+        #     self.canvas.itemconfig(self.status_indicator, fill='white')
+        # elif  self.fsm.state != State.OFF or  self.fsm.state != State.MALFUNCTION:
+        #     self.canvas.itemconfig(self.status_indicator, fill='green')
+
+        self.fsm.update()
+        self.timer.update()
+        self.signaling.update()
+        self.root.after(1000, self.update)
+
+    def draw_food(self):
+        food_position_x = 50
+        food_position_y = 340
+        # Размещаем изображение на определенных координатах (x=100, y=100)
+        self.canvas.create_image(food_position_x, food_position_y, anchor=tk.NW, image=self.image_milk_path)
+        self.canvas.create_image(food_position_x + 50, food_position_y, anchor=tk.NW, image=self.image_egg_path)
+        self.canvas.create_image(food_position_x + (50 * 2), food_position_y, anchor=tk.NW, image=self.image_kolb_path)
+        self.canvas.create_image(food_position_x, food_position_y + 100, anchor=tk.NW, image=self.image_jam_path)
+        self.canvas.create_image(food_position_x + 50, food_position_y + 100, anchor=tk.NW, image=self.image_oil_path)
+        self.canvas.create_image(food_position_x + (50 * 2), food_position_y + 100, anchor=tk.NW,
+                                 image=self.image_cheese_path)
+
+        self.canvas.create_image(food_position_x + 5, food_position_y + 210, anchor=tk.NW,
+                                 image=self.image_pelmen_path)
+        self.canvas.create_image(food_position_x + 5, food_position_y + 290, anchor=tk.NW,
+                                 image=self.image_meat_path)
+
+    def update_food(self):
+        PRODUCTS = ["Молоко", "Яйца", "Колбаса", "Сыр", "Масло подсолнечное", "Варенье", "Пельмени", "Мясо"]
+        count_milk = len([prod for prod in self.products if prod.name == PRODUCTS[0]])
+        count_egg = len([prod for prod in self.products if prod.name == PRODUCTS[1]])
+        count_kolb = len([prod for prod in self.products if prod.name == PRODUCTS[2]])
+        count_cheese = len([prod for prod in self.products if prod.name == PRODUCTS[3]])
+        count_oil = len([prod for prod in self.products if prod.name == PRODUCTS[4]])
+        count_jam = len([prod for prod in self.products if prod.name == PRODUCTS[5]])
+        count_pelmen = len([prod for prod in self.products if prod.name == PRODUCTS[6]])
+        count_meat = len([prod for prod in self.products if prod.name == PRODUCTS[7]])
+
+        if count_milk == 0:
+            self.image_milk_path = PhotoImage(file="image_food/Empty.png")
+        elif count_milk == 1:
+            self.image_milk_path = PhotoImage(file="image_food/placeholder.png")
+        elif count_milk == 2:
+            self.image_milk_path = PhotoImage(file="image_food/placeholder2.png")
+        elif count_milk >= 3:
+            self.image_milk_path = PhotoImage(file="image_food/placeholder3.png")
+
+        if count_egg == 0:
+            self.image_egg_path = PhotoImage(file="image_food/Empty.png")
+        elif count_egg == 1:
+            self.image_egg_path = PhotoImage(file="image_food/placeholder.png")
+        elif count_egg == 2:
+            self.image_egg_path = PhotoImage(file="image_food/placeholder2.png")
+        elif count_egg >= 3:
+            self.image_egg_path = PhotoImage(file="image_food/placeholder3.png")
+
+        if count_kolb == 0:
+            self.image_kolb_path = PhotoImage(file="image_food/Empty.png")
+        elif count_kolb == 1:
+            self.image_kolb_path = PhotoImage(file="image_food/placeholder.png")
+        elif count_kolb == 2:
+            self.image_kolb_path = PhotoImage(file="image_food/placeholder2.png")
+        elif count_kolb >= 3:
+            self.image_kolb_path = PhotoImage(file="image_food/placeholder3.png")
+
+        if count_cheese == 0:
+            self.image_cheese_path = PhotoImage(file="image_food/Empty.png")
+        elif count_cheese == 1:
+            self.image_cheese_path = PhotoImage(file="image_food/placeholder.png")
+        elif count_cheese == 2:
+            self.image_cheese_path = PhotoImage(file="image_food/placeholder2.png")
+        elif count_cheese >= 3:
+            self.image_cheese_path = PhotoImage(file="image_food/placeholder3.png")
+
+        if count_oil == 0:
+            self.image_oil_path = PhotoImage(file="image_food/Empty.png")
+        elif count_oil == 1:
+            self.image_oil_path = PhotoImage(file="image_food/placeholder.png")
+        elif count_oil == 2:
+            self.image_oil_path = PhotoImage(file="image_food/placeholder2.png")
+        elif count_oil >= 3:
+            self.image_oil_path = PhotoImage(file="image_food/placeholder3.png")
+
+        if count_jam == 0:
+            self.image_jam_path = PhotoImage(file="image_food/Empty.png")
+        elif count_jam == 1:
+            self.image_jam_path = PhotoImage(file="image_food/placeholder.png")
+        elif count_jam == 2:
+            self.image_jam_path = PhotoImage(file="image_food/placeholder2.png")
+        elif count_jam >= 3:
+            self.image_jam_path = PhotoImage(file="image_food/placeholder3.png")
+
+        if count_meat == 0:
+            self.image_meat_path = PhotoImage(file="image_food/Empty.png")
+        elif count_meat == 1:
+            self.image_meat_path = PhotoImage(file="image_food/placeholder_freezer.png")
+        elif count_meat == 2:
+            self.image_meat_path = PhotoImage(file="image_food/placeholder_freezer.png")
+        elif count_meat >= 3:
+            self.image_meat_path = PhotoImage(file="image_food/placeholder_freezer.png")
+
+        if count_pelmen == 0:
+            self.image_pelmen_path = PhotoImage(file="image_food/Empty.png")
+        elif count_pelmen == 1:
+            self.image_pelmen_path = PhotoImage(file="image_food/placeholder_freezer.png")
+        elif count_pelmen == 2:
+            self.image_pelmen_path = PhotoImage(file="image_food/placeholder_freezer.png")
+        elif count_pelmen >= 3:
+            self.image_pelmen_path = PhotoImage(file="image_food/placeholder_freezer.png")
+
     def add_product(self):
-        AddProductWindow(self.root, on_add_callback=lambda value: print(value))
+        AddProductWindow(self.root, on_add_callback=lambda value: self.set_products(self.products + [value]))
 
     def remove_product(self):
-        products = self.get_products()
-        RemoveProductWindow(self.root, products, on_remove_callback=lambda value: print(value))
+        RemoveProductWindow(self.root, self.products,
+                            on_remove_callback=lambda value: self.set_products(self.filter_products(value)))
 
-    def get_products(self):
+    def set_products(self, products):
+        self.products = products
+        self.update_expired_products()
+
+    def update_expired_products(self):
+        for p in self.expired_products:
+            p.destroy()
+        self.expired_products = []
+        for product in self.get_expired_products():
+            p_label = tk.Label(self.expired_products_frame, text=f"{product.name} | {product.expiry_date}")
+            p_label.pack(anchor=tk.W)
+            self.expired_products.append(p_label)
+
+    def filter_products(self, product_ids):
+        filtered_products = [product for product in self.products if not (product.id in product_ids)]
+        return filtered_products
+
+    def load_products(self):
         return [Product(name, f"01.01.20{random.randint(23, 25)}") for name in Product.PRODUCTS]
 
     def get_expired_products(self):
-        return [product for product in self.get_products() if product.is_expired()]
+        return [product for product in self.products if product.is_expired()]
 
     def draw_refrigerator(self):
         if self.refrigerator.is_door_open:
@@ -597,30 +766,6 @@ class RefrigeratorApp:
         #     status_indicator_y + status_indicator_width,
         #     fill='cyan'
         # )
-
-    def update(self):
-        self.draw()
-
-        self.state_label.config(text=f"Состояние: {self.fsm.state.name_ru}")
-        self.temp_label.config(text=f"Текущая температура: {self.refrigerator.temperature:.0f}°C")
-        self.target_temp_label.config(text=f"Заданная температура: {self.refrigerator.target_temperature:.0f}°C")
-        self.freezer_temp_label.config(text=f"Текущая температура морозилки: {self.refrigerator.freezer_temperature:.0f}°C")
-
-        if self.refrigerator.temperature <= 0:
-            color = 'cyan'
-        else:
-            color = 'lightgreen'
-        self.canvas.itemconfig(self.temp_text, fill=color)
-
-        # if  self.fsm.state == State.OFF or self.fsm.state == State.MALFUNCTION:
-        #     self.canvas.itemconfig(self.status_indicator, fill='white')
-        # elif  self.fsm.state != State.OFF or  self.fsm.state != State.MALFUNCTION:
-        #     self.canvas.itemconfig(self.status_indicator, fill='green')
-
-        self.fsm.update()
-        self.timer.update()
-        self.signaling.update()
-        self.root.after(1000, self.update)
 
     def open_door(self):
         if not self.refrigerator.is_door_open:

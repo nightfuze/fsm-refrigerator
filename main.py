@@ -4,7 +4,7 @@ import tkinter as tk
 import uuid
 import winsound
 from datetime import datetime
-from enum import Enum, auto
+from enum import Enum
 from tkinter import PhotoImage, messagebox
 from tkinter import ttk
 
@@ -34,32 +34,26 @@ class Signaling:
 
 
 class State(Enum):
-    OFF = ("ОТКЛЮЧЕН", auto())
-    COOLING = ("НОРМАЛЬНОЕ ОХЛАЖДЕНИЕ", auto())
-    HIGH_COOLING = ("СИЛЬНОЕ ОХЛАЖДЕНИЕ", auto())
-    LOW_COOLING = ("СЛАБОЕ ОХЛАЖДЕНИЕ", auto())
-    THREAT_FAILURE = ("УГРОЗА ПОЛОМКИ", auto())
-    MALFUNCTION = ("НЕИСПРАВНОСТЬ", auto())
-    DEFROSTING = ("РАЗМОРОКА", auto())
-
-    def __init__(self, name_ru, auto_value):
-        self.name_ru = name_ru
-        self.auto_value = auto_value
+    OFF = "ОТКЛЮЧЕН"
+    COOLING = "НОРМАЛЬНОЕ ОХЛАЖДЕНИЕ"
+    HIGH_COOLING = "СИЛЬНОЕ ОХЛАЖДЕНИЕ"
+    LOW_COOLING = "СЛАБОЕ ОХЛАЖДЕНИЕ"
+    THREAT_FAILURE = "УГРОЗА ПОЛОМКИ"
+    MALFUNCTION = "НЕИСПРАВНОСТЬ"
+    DEFROSTING = "РАЗМОРОКА"
 
 
 class Signal(Enum):
-    TURN_ON = ("ВКЛЮЧИТЬ", auto())
-    TURN_OFF = ("ВЫКЛЮЧИТЬ", auto())
-    INCREASE_TEMPERATURE = ("ПОВЫСИТЬ ТЕМПЕРАТУРУ", auto())
-    DECREASE_TEMPERATURE = ("ПОНИЗИТЬ ТЕМПЕРАТУРУ", auto())
-    OPEN_DOOR = ("ОТКРЫТЬ ДВЕРЬ", auto())
-    CLOSE_DOOR = ("ЗАКРЫТЬ ДВЕРЬ", auto())
-    DOOR_OPEN_MORE_THAN_30 = ("ДВЕРЬ ОТКРЫТА БОЛЬШЕ 30 СЕКУНД", auto())
-    DOOR_OPEN_MORE_THAN_120 = ("ДВЕРЬ ОТКРЫТА БОЛЬШЕ 120 СЕКУНД", auto())
-
-    def __init__(self, name_ru, auto_value):
-        self.name_ru = name_ru
-        self.auto_value = auto_value
+    TURN_ON = "ВКЛЮЧИТЬ"
+    TURN_OFF = "ВЫКЛЮЧИТЬ"
+    INCREASE_TEMPERATURE = "ПОВЫСИТЬ ТЕМПЕРАТУРУ"
+    DECREASE_TEMPERATURE = "ПОНИЗИТЬ ТЕМПЕРАТУРУ"
+    OPEN_DOOR_TOP = "ОТКРЫТЬ ВЕРХНЮЮ ДВЕРЬ"
+    OPEN_DOOR_LOWER = "ОТКРЫТЬ НИЖНЮЮ ДВЕРЬ"
+    CLOSE_DOOR_TOP = "ЗАКРЫТЬ ВЕРХНЮЮ ДВЕРЬ"
+    CLOSE_DOOR_LOWER = "ЗАКРЫТЬ НИЖНЮЮ ДВЕРЬ"
+    DOOR_OPEN_MORE_THAN_30 = "ДВЕРЬ ОТКРЫТА БОЛЬШЕ 30 СЕКУНД"
+    DOOR_OPEN_MORE_THAN_120 = "ДВЕРЬ ОТКРЫТА БОЛЬШЕ 120 СЕКУНД"
 
 
 class Refrigerator:
@@ -169,10 +163,10 @@ class RefrigeratorFSM:
         elif self.state == State.THREAT_FAILURE:
             if signal == Signal.DOOR_OPEN_MORE_THAN_120:
                 self.state = State.MALFUNCTION
-            elif signal == Signal.CLOSE_DOOR:
+            elif signal == Signal.CLOSE_DOOR_TOP:
                 self.state = State.COOLING
         elif self.state == State.DEFROSTING:
-            if signal == Signal.CLOSE_DOOR:
+            if signal == Signal.CLOSE_DOOR_TOP:
                 self.state = State.OFF
 
         if self.state != State.OFF and (self.state != State.MALFUNCTION or self.state != State.THREAT_FAILURE):
@@ -499,13 +493,15 @@ class RefrigeratorApp:
 
         self.products = self.load_products()
 
-        self.refrigerator_open_img = PhotoImage(file="refrigerator_on_open.png")
+        self.refrigerator_open_on_img = PhotoImage(file="refrigerator_on_open.png")
+        self.refrigerator_open_off_img = PhotoImage(file="refrigerator_off_open.png")
         self.refrigerator_close_off_img = PhotoImage(file="refrigerator_off_close.png")
         self.refrigerator_close_on_img = PhotoImage(file="refrigerator_on_close.png")
+        self.refrigerator_open_on_top_img = PhotoImage(file="refrigerator_on_open_top.png")
+        self.refrigerator_open_off_top_img = PhotoImage(file="refrigerator_off_open_top.png")
+        self.refrigerator_open_on_lower_img = PhotoImage(file="refrigerator_on_open_lower.png")
+        self.refrigerator_open_off_lower_img = PhotoImage(file="refrigerator_off_open_lower.png")
 
-        self.refrigerator_open_img = PhotoImage(file="refrigerator_on_open.png")
-        self.refrigerator_close_off_img = PhotoImage(file="refrigerator_off_close.png")
-        self.refrigerator_close_on_img = PhotoImage(file="refrigerator_on_close.png")
         self.image_milk_path = PhotoImage(file="image_food/Empty.png")
         self.image_kolb_path = PhotoImage(file="image_food/Empty.png")
         self.image_egg_path = PhotoImage(file="image_food/Empty.png")
@@ -520,6 +516,9 @@ class RefrigeratorApp:
         self.temp_display_x = 65
         self.temp_display_y = 180
 
+        self.food_position_x = 50
+        self.food_position_y = 340
+
         container_frame = tk.Frame(root)
         container_frame.pack()
 
@@ -532,7 +531,7 @@ class RefrigeratorApp:
         control_frame = tk.Frame(right_side_frame)
         control_frame.pack()
 
-        self.state_label = tk.Label(control_frame, text=f"Состояние: {self.fsm.state.name_ru}")
+        self.state_label = tk.Label(control_frame, text=f"Состояние: {self.fsm.state.value}")
         self.state_label.pack(anchor=tk.W)
 
         self.outside_temp_label = tk.Label(control_frame, text=f"Температура снаружи: {self.temp_outside}°C")
@@ -550,12 +549,14 @@ class RefrigeratorApp:
         self.freezer_temp_label.pack(anchor=tk.W)
 
         buttons = [
-            (Signal.TURN_ON.name_ru, self.turn_on),
-            (Signal.TURN_OFF.name_ru, self.turn_off),
-            (Signal.INCREASE_TEMPERATURE.name_ru, self.increase_temp),
-            (Signal.DECREASE_TEMPERATURE.name_ru, self.decrease_temp),
-            (Signal.OPEN_DOOR.name_ru, self.open_door),
-            (Signal.CLOSE_DOOR.name_ru, self.close_door),
+            (Signal.TURN_ON.value, self.turn_on),
+            (Signal.TURN_OFF.value, self.turn_off),
+            (Signal.INCREASE_TEMPERATURE.value, self.increase_temp),
+            (Signal.DECREASE_TEMPERATURE.value, self.decrease_temp),
+            (Signal.OPEN_DOOR_TOP.value, self.open_door_top),
+            (Signal.CLOSE_DOOR_TOP.value, self.close_door_top),
+            (Signal.OPEN_DOOR_LOWER.value, self.open_door_lower),
+            (Signal.CLOSE_DOOR_LOWER.value, self.close_door_lower),
         ]
 
         for text, command in buttons:
@@ -587,10 +588,13 @@ class RefrigeratorApp:
         self.draw()
 
         self.update_food()
-        if self.refrigerator.is_door_open:
+        top, lower = self.refrigerator.is_door_open, self.refrigerator.is_freezer_door_open
+        if top:
             self.draw_food()
+        if lower:
+            self.draw_freezer_food()
 
-        self.state_label.config(text=f"Состояние: {self.fsm.state.name_ru}")
+        self.state_label.config(text=f"Состояние: {self.fsm.state.value}")
         self.temp_label.config(text=f"Текущая температура: {self.refrigerator.temperature:.0f}°C")
         self.target_temp_label.config(text=f"Заданная температура: {self.refrigerator.target_temperature:.0f}°C")
         self.freezer_temp_label.config(
@@ -607,40 +611,53 @@ class RefrigeratorApp:
         self.root.after(1000, self.update)
 
     def draw_food(self):
-        food_position_x = 50
-        food_position_y = 340
-        # Размещаем изображение на определенных координатах (x=100, y=100)
-        self.canvas.create_image(food_position_x, food_position_y, anchor=tk.NW, image=self.image_milk_path)
+        self.canvas.create_image(self.food_position_x, self.food_position_y, anchor=tk.NW, image=self.image_milk_path)
         if self.count_milk > 1:
-            self.canvas.create_text(food_position_x, food_position_y, text=self.count_milk, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+            self.canvas.create_text(self.food_position_x, self.food_position_y, text=self.count_milk, anchor=tk.NW,
+                                    fill="black", font=("Helvetica", 14))
 
-        self.canvas.create_image(food_position_x + 40, food_position_y, anchor=tk.NW, image=self.image_egg_path)
+        self.canvas.create_image(self.food_position_x + 40, self.food_position_y, anchor=tk.NW,
+                                 image=self.image_egg_path)
         if self.count_egg > 1:
-            self.canvas.create_text(food_position_x + 40, food_position_y, text=self.count_egg, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+            self.canvas.create_text(self.food_position_x + 40, self.food_position_y, text=self.count_egg, anchor=tk.NW,
+                                    fill="black", font=("Helvetica", 14))
 
-        self.canvas.create_image(food_position_x + (50 * 2), food_position_y, anchor=tk.NW, image=self.image_kolb_path)
+        self.canvas.create_image(self.food_position_x + (50 * 2), self.food_position_y, anchor=tk.NW,
+                                 image=self.image_kolb_path)
         if self.count_kolb > 1:
-            self.canvas.create_text(food_position_x + (50 * 2), food_position_y, text=self.count_kolb, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+            self.canvas.create_text(self.food_position_x + (50 * 2), self.food_position_y, text=self.count_kolb,
+                                    anchor=tk.NW, fill="black", font=("Helvetica", 14))
 
-        self.canvas.create_image(food_position_x, food_position_y + 100, anchor=tk.NW, image=self.image_jam_path)
+        self.canvas.create_image(self.food_position_x, self.food_position_y + 100, anchor=tk.NW,
+                                 image=self.image_jam_path)
         if self.count_jam > 1:
-            self.canvas.create_text(food_position_x, food_position_y + 100, text=self.count_jam, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+            self.canvas.create_text(self.food_position_x, self.food_position_y + 100, text=self.count_jam, anchor=tk.NW,
+                                    fill="black", font=("Helvetica", 14))
 
-        self.canvas.create_image(food_position_x + 50, food_position_y + 100, anchor=tk.NW, image=self.image_oil_path)
+        self.canvas.create_image(self.food_position_x + 50, self.food_position_y + 100, anchor=tk.NW,
+                                 image=self.image_oil_path)
         if self.count_oil > 1:
-            self.canvas.create_text(food_position_x + 50, food_position_y + 100, text=self.count_oil, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+            self.canvas.create_text(self.food_position_x + 50, self.food_position_y + 100, text=self.count_oil,
+                                    anchor=tk.NW, fill="black", font=("Helvetica", 14))
 
-        self.canvas.create_image(food_position_x + (50 * 2), food_position_y + 100, anchor=tk.NW,image=self.image_cheese_path)
+        self.canvas.create_image(self.food_position_x + (50 * 2), self.food_position_y + 100, anchor=tk.NW,
+                                 image=self.image_cheese_path)
         if self.count_cheese > 1:
-            self.canvas.create_text(food_position_x + (50 * 2), food_position_y + 100, text=self.count_cheese, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+            self.canvas.create_text(self.food_position_x + (50 * 2), self.food_position_y + 100, text=self.count_cheese,
+                                    anchor=tk.NW, fill="black", font=("Helvetica", 14))
 
-        self.canvas.create_image(food_position_x + 5, food_position_y + 210, anchor=tk.NW,image=self.image_pelmen_path)
+    def draw_freezer_food(self):
+        self.canvas.create_image(self.food_position_x + 5, self.food_position_y + 210, anchor=tk.NW,
+                                 image=self.image_pelmen_path)
         if self.count_pelmen > 1:
-            self.canvas.create_text(food_position_x + 5, food_position_y + 210, text=self.count_pelmen, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+            self.canvas.create_text(self.food_position_x + 5, self.food_position_y + 210, text=self.count_pelmen,
+                                    anchor=tk.NW, fill="black", font=("Helvetica", 14))
 
-        self.canvas.create_image(food_position_x + 5, food_position_y + 290, anchor=tk.NW,image=self.image_meat_path)
+        self.canvas.create_image(self.food_position_x + 5, self.food_position_y + 290, anchor=tk.NW,
+                                 image=self.image_meat_path)
         if self.count_meat > 1:
-            self.canvas.create_text(food_position_x + 5, food_position_y + 290, text=self.count_meat, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+            self.canvas.create_text(self.food_position_x + 5, self.food_position_y + 290, text=self.count_meat,
+                                    anchor=tk.NW, fill="black", font=("Helvetica", 14))
 
     def update_food(self):
         PRODUCTS = ["Молоко", "Яйца", "Колбаса", "Сыр", "Масло подсолнечное", "Варенье", "Пельмени", "Мясо"]
@@ -648,7 +665,7 @@ class RefrigeratorApp:
         self.count_egg = len([prod for prod in self.products if prod.name == PRODUCTS[1]])
         self.count_kolb = len([prod for prod in self.products if prod.name == PRODUCTS[2]])
         self.count_cheese = len([prod for prod in self.products if prod.name == PRODUCTS[3]])
-        self. count_oil = len([prod for prod in self.products if prod.name == PRODUCTS[4]])
+        self.count_oil = len([prod for prod in self.products if prod.name == PRODUCTS[4]])
         self.count_jam = len([prod for prod in self.products if prod.name == PRODUCTS[5]])
         self.count_pelmen = len([prod for prod in self.products if prod.name == PRODUCTS[6]])
         self.count_meat = len([prod for prod in self.products if prod.name == PRODUCTS[7]])
@@ -693,7 +710,6 @@ class RefrigeratorApp:
         else:
             self.image_pelmen_path = PhotoImage(file="image_food/pelm_1.png")
 
-
     def add_product(self):
         AddProductWindow(self.root, on_add_callback=lambda value: self.set_products(self.products + [value]))
 
@@ -725,14 +741,28 @@ class RefrigeratorApp:
         return [product for product in self.products if product.is_expired()]
 
     def draw_refrigerator(self):
-        if self.refrigerator.is_door_open:
-            self.update_image()
+        top, lower = self.refrigerator.is_door_open, self.refrigerator.is_freezer_door_open
+        if top and lower:
             self.draw_open_door()
-        else:
+        elif not top and not lower:
             self.draw_close_door()
+        elif top:
+            self.draw_open_door_top()
+        elif lower:
+            self.draw_open_door_lower()
 
     def draw_open_door(self):
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.refrigerator_open_img)
+        img = self.refrigerator_open_on_img if self.refrigerator.is_turn_on else self.refrigerator_open_off_img
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=img)
+
+    def draw_open_door_top(self):
+        img = self.refrigerator_open_on_top_img if self.refrigerator.is_turn_on else self.refrigerator_open_off_top_img
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=img)
+
+    def draw_open_door_lower(self):
+        img = self.refrigerator_open_on_lower_img if self.refrigerator.is_turn_on else self.refrigerator_open_off_lower_img
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=img)
+        self.draw_temp_display()
 
     def draw_close_door(self):
         if self.fsm.state == State.MALFUNCTION:
@@ -743,7 +773,10 @@ class RefrigeratorApp:
             image = self.refrigerator_close_off_img
         self.canvas.create_image(0, 0, anchor=tk.NW, image=image)
 
-        self.temp_display = self.canvas.create_rectangle(
+        self.draw_temp_display()
+
+    def draw_temp_display(self):
+        self.canvas.create_rectangle(
             self.temp_display_x, self.temp_display_y,
             self.temp_display_width + self.temp_display_x,
             self.temp_display_height + self.temp_display_y,
@@ -759,27 +792,30 @@ class RefrigeratorApp:
                 color = 'lightgreen'
             self.canvas.create_text(temp_text_x, temp_text_y, text=f"{self.refrigerator.temperature:.0f}°C", fill=color)
 
-        # status_indicator_x = 36
-        # status_indicator_y = 183
-        # status_indicator_width = 25
-        # self.status_indicator = self.canvas.create_oval(
-        #     status_indicator_x, status_indicator_y,
-        #     status_indicator_x + status_indicator_width,
-        #     status_indicator_y + status_indicator_width,
-        #     fill='cyan'
-        # )
-
-    def open_door(self):
+    def open_door_top(self):
         if not self.refrigerator.is_door_open:
-            self.fsm.send_signal(Signal.OPEN_DOOR)
+            self.fsm.send_signal(Signal.OPEN_DOOR_TOP)
             self.refrigerator.open_door()
-        if not self.fsm.state == State.OFF:
+        if not self.fsm.state == State.OFF and not self.timer.is_started:
             self.timer.start()
 
-    def close_door(self):
+    def close_door_top(self):
         if self.refrigerator.is_door_open:
-            self.fsm.send_signal(Signal.CLOSE_DOOR)
+            self.fsm.send_signal(Signal.CLOSE_DOOR_TOP)
             self.refrigerator.close_door()
+            self.timer.stop()
+
+    def open_door_lower(self):
+        if not self.refrigerator.is_freezer_door_open:
+            self.fsm.send_signal(Signal.OPEN_DOOR_LOWER)
+            self.refrigerator.open_freezer_door()
+        if not self.fsm.state == State.OFF and not self.timer.is_started:
+            self.timer.start()
+
+    def close_door_lower(self):
+        if self.refrigerator.is_freezer_door_open:
+            self.fsm.send_signal(Signal.CLOSE_DOOR_LOWER)
+            self.refrigerator.close_freezer_door()
             self.timer.stop()
 
     def turn_on(self):
@@ -799,13 +835,6 @@ class RefrigeratorApp:
     def on_click(self, event):
         print(event.x, event.y)
 
-    def update_image(self):
-        if self.fsm.state == State.OFF:
-            self.refrigerator_open_img = PhotoImage(file="refrigerator_off_open.png")
-        elif self.fsm.state == State.MALFUNCTION:
-            self.refrigerator_open_img = PhotoImage(file="refrigerator_malfunction_open.png")
-        else:
-            self.refrigerator_open_img = PhotoImage(file="refrigerator_on_open.png")
 
 if __name__ == "__main__":
     root = tk.Tk()

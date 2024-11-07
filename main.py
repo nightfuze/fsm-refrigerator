@@ -54,6 +54,7 @@ class Signal(Enum):
     CLOSE_DOOR_LOWER = "ЗАКРЫТЬ НИЖНЮЮ ДВЕРЬ"
     DOOR_OPEN_MORE_THAN_30 = "ДВЕРЬ ОТКРЫТА БОЛЬШЕ 30 СЕКУНД"
     DOOR_OPEN_MORE_THAN_120 = "ДВЕРЬ ОТКРЫТА БОЛЬШЕ 120 СЕКУНД"
+    REPAIR = "ПОЧИНИТЬ"
 
 
 class Refrigerator:
@@ -137,56 +138,59 @@ class RefrigeratorFSM:
         self.refrigerator = refrigerator
 
     def send_signal(self, signal):
-        if self.state == State.MALFUNCTION:
-            return
         if self.state == State.OFF:
             if signal == Signal.TURN_ON:
                 self.state = State.COOLING
+            elif signal == Signal.TURN_OFF:
+                self.state = State.OFF
         elif self.state == State.COOLING:
             if signal == Signal.INCREASE_TEMPERATURE:
-                self.state = State.LOW_COOLING
+                self.refrigerator.increase_temp()
             elif signal == Signal.DECREASE_TEMPERATURE:
-                self.state = State.HIGH_COOLING
+                self.refrigerator.decrease_temp()
             elif signal == Signal.DOOR_OPEN_MORE_THAN_30:
                 self.state = State.THREAT_FAILURE
-            elif signal == Signal.TURN_OFF and self.refrigerator.is_door_open:
-                self.state = State.DEFROSTING
+            elif signal == Signal.TURN_OFF:
+                self.state = State.OFF
         elif self.state == State.COOLING:
             if signal == Signal.DOOR_OPEN_MORE_THAN_30:
                 self.state = State.THREAT_FAILURE
+            elif signal == Signal.TURN_OFF:
+                self.state = State.OFF
+            elif signal == Signal.INCREASE_TEMPERATURE:
+                self.refrigerator.increase_temp()
+            elif signal == Signal.DECREASE_TEMPERATURE:
+                self.refrigerator.decrease_temp()
         elif self.state == State.LOW_COOLING:
             if signal == Signal.DOOR_OPEN_MORE_THAN_30:
                 self.state = State.THREAT_FAILURE
+            elif signal == Signal.TURN_OFF:
+                self.state = State.OFF
+            elif signal == Signal.INCREASE_TEMPERATURE:
+                self.refrigerator.increase_temp()
+            elif signal == Signal.DECREASE_TEMPERATURE:
+                self.refrigerator.decrease_temp()
         elif self.state == State.HIGH_COOLING:
             if signal == Signal.DOOR_OPEN_MORE_THAN_30:
                 self.state = State.THREAT_FAILURE
+            elif signal == Signal.TURN_OFF:
+                self.state = State.OFF
+            elif signal == Signal.INCREASE_TEMPERATURE:
+                self.refrigerator.increase_temp()
+            elif signal == Signal.DECREASE_TEMPERATURE:
+                self.refrigerator.decrease_temp()
         elif self.state == State.THREAT_FAILURE:
             if signal == Signal.DOOR_OPEN_MORE_THAN_120:
                 self.state = State.MALFUNCTION
             elif signal == Signal.CLOSE_DOOR_TOP:
                 self.state = State.COOLING
-        elif self.state == State.DEFROSTING:
-            if signal == Signal.CLOSE_DOOR_TOP:
+            elif signal == Signal.TURN_OFF:
                 self.state = State.OFF
-
-        if self.state != State.OFF and (self.state != State.MALFUNCTION or self.state != State.THREAT_FAILURE):
-            if signal == Signal.INCREASE_TEMPERATURE:
-                self.refrigerator.increase_temp()
-            elif signal == Signal.DECREASE_TEMPERATURE:
-                self.refrigerator.decrease_temp()
-
-        if signal == Signal.TURN_OFF:
-            self.state = State.OFF
+        elif self.state == State.MALFUNCTION:
+            if signal == Signal.REPAIR:
+                self.state = State.COOLING
 
     def update(self):
-        # if self.state != State.OFF or self.state != State.MALFUNCTION or self.state != State.THREAT_FAILURE:
-        #     if self.refrigerator.temperature == self.refrigerator.target_temperature:
-        #         self.state = State.COOLING
-        #     elif self.refrigerator.temperature < self.refrigerator.target_temperature:
-        #         self.state = State.LOW_COOLING
-        #     elif self.refrigerator.temperature > self.refrigerator.target_temperature:
-        #         self.state = State.HIGH_COOLING
-
         if self.state == State.OFF:
             self.refrigerator.turn_off()
             self.refrigerator.cool_turn_off()
@@ -525,11 +529,12 @@ class RefrigeratorApp:
         self.canvas = tk.Canvas(container_frame, width=600, height=800)
         self.canvas.pack(side=tk.LEFT)
 
-        right_side_frame = tk.Frame(container_frame, width=300, height=512)
-        right_side_frame.pack(anchor=tk.N, side=tk.RIGHT, pady=10, padx=10)
+        right_side_frame = tk.Frame(container_frame)
+        right_side_frame.pack(fill=tk.BOTH, anchor=tk.N, side=tk.RIGHT, pady=10, padx=10)
 
-        control_frame = tk.Frame(right_side_frame)
-        control_frame.pack()
+        control_frame = tk.Frame(right_side_frame, width=275)
+        control_frame.pack(fill=tk.BOTH, expand=tk.TRUE)
+        control_frame.pack_propagate(tk.OFF)
 
         self.state_label = tk.Label(control_frame, text=f"Состояние: {self.fsm.state.value}")
         self.state_label.pack(anchor=tk.W)
@@ -557,15 +562,16 @@ class RefrigeratorApp:
             (Signal.CLOSE_DOOR_TOP.value, self.close_door_top),
             (Signal.OPEN_DOOR_LOWER.value, self.open_door_lower),
             (Signal.CLOSE_DOOR_LOWER.value, self.close_door_lower),
+            (Signal.REPAIR.value, self.repair),
         ]
 
         for text, command in buttons:
-            tk.Button(control_frame, text=text, command=command).pack(fill=tk.X)
+            tk.Button(control_frame, text=text, command=command).pack(pady=2, fill=tk.X)
 
-        tk.Button(control_frame, text="Добавить продукт", command=self.add_product).pack(fill=tk.X)
-        tk.Button(control_frame, text="Удалить продукт", command=self.remove_product).pack(fill=tk.X)
+        tk.Button(control_frame, text="ДОБАВИТЬ ПРОДУКТ", command=self.add_product).pack(pady=2, fill=tk.X)
+        tk.Button(control_frame, text="УДАЛИТЬ ПРОДУКТ", command=self.remove_product).pack(pady=2, fill=tk.X)
 
-        self.expired_products_frame = tk.Frame(right_side_frame, pady=10)
+        self.expired_products_frame = tk.Frame(control_frame, pady=10)
         self.expired_products_frame.pack(fill=tk.X)
 
         self.expired_products_label = tk.Label(self.expired_products_frame, text="Просроченные продукты:")
@@ -752,11 +758,11 @@ class RefrigeratorApp:
             self.draw_open_door_lower()
 
     def draw_open_door(self):
-        img = self.refrigerator_open_on_img if self.refrigerator.is_turn_on else self.refrigerator_open_off_img
+        img = self.refrigerator_open_on_img if self.refrigerator.is_turn_on and self.fsm.state != State.MALFUNCTION else self.refrigerator_open_off_img
         self.canvas.create_image(0, 0, anchor=tk.NW, image=img)
 
     def draw_open_door_top(self):
-        img = self.refrigerator_open_on_top_img if self.refrigerator.is_turn_on else self.refrigerator_open_off_top_img
+        img = self.refrigerator_open_on_top_img if self.refrigerator.is_turn_on and self.fsm.state != State.MALFUNCTION else self.refrigerator_open_off_top_img
         self.canvas.create_image(0, 0, anchor=tk.NW, image=img)
 
     def draw_open_door_lower(self):
@@ -831,6 +837,9 @@ class RefrigeratorApp:
 
     def decrease_temp(self):
         self.fsm.send_signal(Signal.DECREASE_TEMPERATURE)
+
+    def repair(self):
+        self.fsm.send_signal(Signal.REPAIR)
 
     def on_click(self, event):
         print(event.x, event.y)

@@ -20,8 +20,8 @@ class Signaling:
         if not self.fsm.state == State.OFF and ((self.fsm.state == State.THREAT_FAILURE) and not self.playing_audio):
             self.play_audio()
 
-        if self.fsm.state == State.OFF or ((
-                                                   not self.fsm.state == State.THREAT_FAILURE) and self.playing_audio and not self.fsm.refrigerator.is_door_open):
+        if self.fsm.state == State.OFF or ((not self.fsm.state == State.THREAT_FAILURE) and self.playing_audio
+                                           and not self.fsm.refrigerator.is_door_open) or self.fsm.state == State.MALFUNCTION:
             self.stop_audio()
 
     def play_audio(self):
@@ -499,13 +499,13 @@ class RefrigeratorApp:
 
         self.products = self.load_products()
 
-        self.refrigerator_open_img = PhotoImage(file="refrigerator_open.png")
-        self.refrigerator_close_off_img = PhotoImage(file="refrigerator_off.png")
-        self.refrigerator_close_on_img = PhotoImage(file="refrigerator_on.png")
+        self.refrigerator_open_img = PhotoImage(file="refrigerator_on_open.png")
+        self.refrigerator_close_off_img = PhotoImage(file="refrigerator_off_close.png")
+        self.refrigerator_close_on_img = PhotoImage(file="refrigerator_on_close.png")
 
-        self.refrigerator_open_img = PhotoImage(file="refrigerator_open.png")
-        self.refrigerator_close_off_img = PhotoImage(file="refrigerator_off.png")
-        self.refrigerator_close_on_img = PhotoImage(file="refrigerator_on.png")
+        self.refrigerator_open_img = PhotoImage(file="refrigerator_on_open.png")
+        self.refrigerator_close_off_img = PhotoImage(file="refrigerator_off_close.png")
+        self.refrigerator_close_on_img = PhotoImage(file="refrigerator_on_close.png")
         self.image_milk_path = PhotoImage(file="image_food/Empty.png")
         self.image_kolb_path = PhotoImage(file="image_food/Empty.png")
         self.image_egg_path = PhotoImage(file="image_food/Empty.png")
@@ -611,100 +611,88 @@ class RefrigeratorApp:
         food_position_y = 340
         # Размещаем изображение на определенных координатах (x=100, y=100)
         self.canvas.create_image(food_position_x, food_position_y, anchor=tk.NW, image=self.image_milk_path)
-        self.canvas.create_image(food_position_x + 50, food_position_y, anchor=tk.NW, image=self.image_egg_path)
-        self.canvas.create_image(food_position_x + (50 * 2), food_position_y, anchor=tk.NW, image=self.image_kolb_path)
-        self.canvas.create_image(food_position_x, food_position_y + 100, anchor=tk.NW, image=self.image_jam_path)
-        self.canvas.create_image(food_position_x + 50, food_position_y + 100, anchor=tk.NW, image=self.image_oil_path)
-        self.canvas.create_image(food_position_x + (50 * 2), food_position_y + 100, anchor=tk.NW,
-                                 image=self.image_cheese_path)
+        if self.count_milk > 1:
+            self.canvas.create_text(food_position_x, food_position_y, text=self.count_milk, anchor=tk.NW, fill="black", font=("Helvetica", 14))
 
-        self.canvas.create_image(food_position_x + 5, food_position_y + 210, anchor=tk.NW,
-                                 image=self.image_pelmen_path)
-        self.canvas.create_image(food_position_x + 5, food_position_y + 290, anchor=tk.NW,
-                                 image=self.image_meat_path)
+        self.canvas.create_image(food_position_x + 40, food_position_y, anchor=tk.NW, image=self.image_egg_path)
+        if self.count_egg > 1:
+            self.canvas.create_text(food_position_x + 40, food_position_y, text=self.count_egg, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+
+        self.canvas.create_image(food_position_x + (50 * 2), food_position_y, anchor=tk.NW, image=self.image_kolb_path)
+        if self.count_kolb > 1:
+            self.canvas.create_text(food_position_x + (50 * 2), food_position_y, text=self.count_kolb, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+
+        self.canvas.create_image(food_position_x, food_position_y + 100, anchor=tk.NW, image=self.image_jam_path)
+        if self.count_jam > 1:
+            self.canvas.create_text(food_position_x, food_position_y + 100, text=self.count_jam, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+
+        self.canvas.create_image(food_position_x + 50, food_position_y + 100, anchor=tk.NW, image=self.image_oil_path)
+        if self.count_oil > 1:
+            self.canvas.create_text(food_position_x + 50, food_position_y + 100, text=self.count_oil, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+
+        self.canvas.create_image(food_position_x + (50 * 2), food_position_y + 100, anchor=tk.NW,image=self.image_cheese_path)
+        if self.count_cheese > 1:
+            self.canvas.create_text(food_position_x + (50 * 2), food_position_y + 100, text=self.count_cheese, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+
+        self.canvas.create_image(food_position_x + 5, food_position_y + 210, anchor=tk.NW,image=self.image_pelmen_path)
+        if self.count_pelmen > 1:
+            self.canvas.create_text(food_position_x + 5, food_position_y + 210, text=self.count_pelmen, anchor=tk.NW, fill="black", font=("Helvetica", 14))
+
+        self.canvas.create_image(food_position_x + 5, food_position_y + 290, anchor=tk.NW,image=self.image_meat_path)
+        if self.count_meat > 1:
+            self.canvas.create_text(food_position_x + 5, food_position_y + 290, text=self.count_meat, anchor=tk.NW, fill="black", font=("Helvetica", 14))
 
     def update_food(self):
         PRODUCTS = ["Молоко", "Яйца", "Колбаса", "Сыр", "Масло подсолнечное", "Варенье", "Пельмени", "Мясо"]
-        count_milk = len([prod for prod in self.products if prod.name == PRODUCTS[0]])
-        count_egg = len([prod for prod in self.products if prod.name == PRODUCTS[1]])
-        count_kolb = len([prod for prod in self.products if prod.name == PRODUCTS[2]])
-        count_cheese = len([prod for prod in self.products if prod.name == PRODUCTS[3]])
-        count_oil = len([prod for prod in self.products if prod.name == PRODUCTS[4]])
-        count_jam = len([prod for prod in self.products if prod.name == PRODUCTS[5]])
-        count_pelmen = len([prod for prod in self.products if prod.name == PRODUCTS[6]])
-        count_meat = len([prod for prod in self.products if prod.name == PRODUCTS[7]])
+        self.count_milk = len([prod for prod in self.products if prod.name == PRODUCTS[0]])
+        self.count_egg = len([prod for prod in self.products if prod.name == PRODUCTS[1]])
+        self.count_kolb = len([prod for prod in self.products if prod.name == PRODUCTS[2]])
+        self.count_cheese = len([prod for prod in self.products if prod.name == PRODUCTS[3]])
+        self. count_oil = len([prod for prod in self.products if prod.name == PRODUCTS[4]])
+        self.count_jam = len([prod for prod in self.products if prod.name == PRODUCTS[5]])
+        self.count_pelmen = len([prod for prod in self.products if prod.name == PRODUCTS[6]])
+        self.count_meat = len([prod for prod in self.products if prod.name == PRODUCTS[7]])
 
-        if count_milk == 0:
+        if self.count_milk == 0:
             self.image_milk_path = PhotoImage(file="image_food/Empty.png")
-        elif count_milk == 1:
-            self.image_milk_path = PhotoImage(file="image_food/placeholder.png")
-        elif count_milk == 2:
-            self.image_milk_path = PhotoImage(file="image_food/placeholder2.png")
-        elif count_milk >= 3:
-            self.image_milk_path = PhotoImage(file="image_food/placeholder3.png")
+        else:
+            self.image_milk_path = PhotoImage(file="image_food/milk_1.png")
 
-        if count_egg == 0:
+        if self.count_egg == 0:
             self.image_egg_path = PhotoImage(file="image_food/Empty.png")
-        elif count_egg == 1:
-            self.image_egg_path = PhotoImage(file="image_food/placeholder.png")
-        elif count_egg == 2:
-            self.image_egg_path = PhotoImage(file="image_food/placeholder2.png")
-        elif count_egg >= 3:
-            self.image_egg_path = PhotoImage(file="image_food/placeholder3.png")
+        else:
+            self.image_egg_path = PhotoImage(file="image_food/egg_1.png")
 
-        if count_kolb == 0:
+        if self.count_kolb == 0:
             self.image_kolb_path = PhotoImage(file="image_food/Empty.png")
-        elif count_kolb == 1:
-            self.image_kolb_path = PhotoImage(file="image_food/placeholder.png")
-        elif count_kolb == 2:
-            self.image_kolb_path = PhotoImage(file="image_food/placeholder2.png")
-        elif count_kolb >= 3:
-            self.image_kolb_path = PhotoImage(file="image_food/placeholder3.png")
+        else:
+            self.image_kolb_path = PhotoImage(file="image_food/kolb_1.png")
 
-        if count_cheese == 0:
+        if self.count_cheese == 0:
             self.image_cheese_path = PhotoImage(file="image_food/Empty.png")
-        elif count_cheese == 1:
-            self.image_cheese_path = PhotoImage(file="image_food/placeholder.png")
-        elif count_cheese == 2:
-            self.image_cheese_path = PhotoImage(file="image_food/placeholder2.png")
-        elif count_cheese >= 3:
-            self.image_cheese_path = PhotoImage(file="image_food/placeholder3.png")
+        else:
+            self.image_cheese_path = PhotoImage(file="image_food/cheese_1.png")
 
-        if count_oil == 0:
+        if self.count_oil == 0:
             self.image_oil_path = PhotoImage(file="image_food/Empty.png")
-        elif count_oil == 1:
-            self.image_oil_path = PhotoImage(file="image_food/placeholder.png")
-        elif count_oil == 2:
-            self.image_oil_path = PhotoImage(file="image_food/placeholder2.png")
-        elif count_oil >= 3:
-            self.image_oil_path = PhotoImage(file="image_food/placeholder3.png")
+        else:
+            self.image_oil_path = PhotoImage(file="image_food/oil_1.png")
 
-        if count_jam == 0:
+        if self.count_jam == 0:
             self.image_jam_path = PhotoImage(file="image_food/Empty.png")
-        elif count_jam == 1:
-            self.image_jam_path = PhotoImage(file="image_food/placeholder.png")
-        elif count_jam == 2:
-            self.image_jam_path = PhotoImage(file="image_food/placeholder2.png")
-        elif count_jam >= 3:
-            self.image_jam_path = PhotoImage(file="image_food/placeholder3.png")
+        else:
+            self.image_jam_path = PhotoImage(file="image_food/jam_1.png")
 
-        if count_meat == 0:
+        if self.count_meat == 0:
             self.image_meat_path = PhotoImage(file="image_food/Empty.png")
-        elif count_meat == 1:
-            self.image_meat_path = PhotoImage(file="image_food/placeholder_freezer.png")
-        elif count_meat == 2:
-            self.image_meat_path = PhotoImage(file="image_food/placeholder_freezer.png")
-        elif count_meat >= 3:
-            self.image_meat_path = PhotoImage(file="image_food/placeholder_freezer.png")
+        else:
+            self.image_meat_path = PhotoImage(file="image_food/meat_1.png")
 
-        if count_pelmen == 0:
+        if self.count_pelmen == 0:
             self.image_pelmen_path = PhotoImage(file="image_food/Empty.png")
-        elif count_pelmen == 1:
-            self.image_pelmen_path = PhotoImage(file="image_food/placeholder_freezer.png")
-        elif count_pelmen == 2:
-            self.image_pelmen_path = PhotoImage(file="image_food/placeholder_freezer.png")
-        elif count_pelmen >= 3:
-            self.image_pelmen_path = PhotoImage(file="image_food/placeholder_freezer.png")
+        else:
+            self.image_pelmen_path = PhotoImage(file="image_food/pelm_1.png")
+
 
     def add_product(self):
         AddProductWindow(self.root, on_add_callback=lambda value: self.set_products(self.products + [value]))
@@ -738,6 +726,7 @@ class RefrigeratorApp:
 
     def draw_refrigerator(self):
         if self.refrigerator.is_door_open:
+            self.update_image()
             self.draw_open_door()
         else:
             self.draw_close_door()
@@ -746,8 +735,13 @@ class RefrigeratorApp:
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.refrigerator_open_img)
 
     def draw_close_door(self):
-        self.canvas.create_image(0, 0, anchor=tk.NW,
-                                 image=self.refrigerator_close_on_img if self.refrigerator.is_turn_on else self.refrigerator_close_off_img)
+        if self.fsm.state == State.MALFUNCTION:
+            image = self.refrigerator_close_off_img
+        elif self.refrigerator.is_turn_on:
+            image = self.refrigerator_close_on_img
+        else:
+            image = self.refrigerator_close_off_img
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=image)
 
         self.temp_display = self.canvas.create_rectangle(
             self.temp_display_x, self.temp_display_y,
@@ -756,7 +750,7 @@ class RefrigeratorApp:
             fill='black'
         )
 
-        if self.refrigerator.is_turn_on:
+        if self.refrigerator.is_turn_on and self.fsm.state != State.MALFUNCTION:
             temp_text_x = self.temp_display_x + self.temp_display_width / 2
             temp_text_y = self.temp_display_y + self.temp_display_height / 2
             if self.refrigerator.temperature <= 0:
@@ -805,6 +799,13 @@ class RefrigeratorApp:
     def on_click(self, event):
         print(event.x, event.y)
 
+    def update_image(self):
+        if self.fsm.state == State.OFF:
+            self.refrigerator_open_img = PhotoImage(file="refrigerator_off_open.png")
+        elif self.fsm.state == State.MALFUNCTION:
+            self.refrigerator_open_img = PhotoImage(file="refrigerator_malfunction_open.png")
+        else:
+            self.refrigerator_open_img = PhotoImage(file="refrigerator_on_open.png")
 
 if __name__ == "__main__":
     root = tk.Tk()

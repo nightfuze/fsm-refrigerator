@@ -229,19 +229,17 @@ class Timer:
         self.time = 0
         self.fsm = fsm
         self.is_started = False
+        self.time_to_threat_failure = 30
+        self.time_to_malfunction = 120
 
     def update(self):
         if not self.is_started:
             return
         self.time += 1
 
-        # if self.time > 30:
-        #     self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_30)
-        # elif self.time > 120:
-        #     self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_120)
-        if self.time > 3:
+        if self.time > self.time_to_threat_failure:
             self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_30)
-        if self.time > 10:
+        if self.time > self.time_to_malfunction:
             self.fsm.send_signal(Signal.DOOR_OPEN_MORE_THAN_120)
         if self.fsm.state == State.OFF:
             self.stop()
@@ -313,7 +311,7 @@ class Product:
             return False
 
 
-class BaseProductWindow(tk.Toplevel):
+class BaseWindow(tk.Toplevel):
     def __init__(self, root, title):
         super().__init__(root)
         w, h = 400, 400
@@ -334,14 +332,14 @@ class BaseProductWindow(tk.Toplevel):
         self.validation_errors = {}
 
     @staticmethod
-    def create_label_entry(label_text, parent):
+    def create_label_entry(label_text, parent, default_value=""):
         frame = tk.Frame(parent)
         frame.pack(fill=tk.X, pady=5)
 
         label = tk.Label(frame, text=label_text)
         label.pack(anchor="w")
 
-        entry = tk.Entry(frame)
+        entry = tk.Entry(frame, textvariable=tk.StringVar(value=default_value))
         entry.pack(fill=tk.X)
 
         error_label = tk.Label(frame, text="", foreground="red")
@@ -361,7 +359,7 @@ class BaseProductWindow(tk.Toplevel):
         return len(self.validation_errors) == 0
 
 
-class AddProductWindow(BaseProductWindow):
+class AddProductWindow(BaseWindow):
     def __init__(self, root, on_add_callback):
         self.on_add_callback = on_add_callback
         super().__init__(root, "Добавление продукта")
@@ -411,7 +409,7 @@ class AddProductWindow(BaseProductWindow):
             messagebox.showerror("Ошибка", f"Не удалось добавить продукт: {str(e)}")
 
 
-class RemoveProductWindow(BaseProductWindow):
+class RemoveProductWindow(BaseWindow):
     def __init__(self, root, products, on_remove_callback):
         self.products = products
         self.on_remove_callback = on_remove_callback
@@ -475,6 +473,58 @@ class RemoveProductWindow(BaseProductWindow):
             self.destroy()
 
 
+class SettingsAppWindow(BaseWindow):
+    def __init__(self, root, timer):
+        super().__init__(root, "Настройки")
+        self.timer = timer
+        product_frame = tk.Frame(self.main_frame)
+        product_frame.pack(fill=tk.X, pady=5)
+
+        self.expiry_entry_1, self.expiry_error_1 = self.create_label_entry("Время до угрозы поломки:", self.main_frame, self.timer.time_to_threat_failure)
+        self.expiry_entry_1.bind('<KeyRelease>', self.validate_time_to_threat_failure)
+
+        self.expiry_entry_2, self.expiry_error_2 = self.create_label_entry("Время до поломки:", self.main_frame, self.timer.time_to_malfunction)
+        self.expiry_entry_2.bind('<KeyRelease>', self.validate_time_to_malfunction)
+
+        button_frame = tk.Frame(self.main_frame)
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
+
+        tk.Button(button_frame, text="Отмена", command=self.destroy).pack(side=tk.RIGHT, padx=5)
+        tk.Button(button_frame, text="Применить", command=self.apply_settings).pack(side=tk.RIGHT)
+
+    def validate_time_to_threat_failure(self, event=None):
+        date_str = self.expiry_entry_1.get().strip()
+        if not (date_str.isdigit() and int(date_str) > 0):
+            self.show_error('expiry', self.expiry_error_1, "время должно быть целым и больше нуля")
+        else:
+            self.clear_error('expiry', self.expiry_error_1)
+
+    def validate_time_to_malfunction(self, event=None):
+        time_to_threat_failure = self.expiry_entry_1.get().strip()
+        date_str = self.expiry_entry_2.get().strip()
+        if not (time_to_threat_failure.isdigit() and (
+                date_str.isdigit() and int(date_str) > int(time_to_threat_failure))):
+            self.show_error('expiry', self.expiry_error_2, "время должно быть целым и больше времени до угрозы поломки")
+        else:
+            self.clear_error('expiry', self.expiry_error_2)
+
+    def apply_settings(self):
+        self.validate_time_to_threat_failure()
+        self.validate_time_to_malfunction()
+
+        if not self.validate_form():
+            messagebox.showerror("Ошибка", "Пожалуйста, исправьте ошибки в форме")
+            return
+
+        try:
+            self.timer.time_to_threat_failure = int(self.expiry_entry_1.get().strip())
+            self.timer.time_to_malfunction = int(self.expiry_entry_2.get().strip())
+            self.destroy()
+
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось изменить настройки: {str(e)}")
+
+
 class RefrigeratorApp:
     def __init__(self, root):
         self.root = root
@@ -514,6 +564,10 @@ class RefrigeratorApp:
         self.image_jam_path = PhotoImage(file="image_food/Empty.png")
         self.image_meat_path = PhotoImage(file="image_food/Empty.png")
         self.image_pelmen_path = PhotoImage(file="image_food/Empty.png")
+
+        menu_bar = tk.Menu(root)
+        menu_bar.add_command(label="Настройки", command=self.open_settings)
+        root.config(menu=menu_bar)
 
         self.temp_display_width = 80
         self.temp_display_height = 30
@@ -584,6 +638,9 @@ class RefrigeratorApp:
 
         self.draw()
         self.update()
+
+    def open_settings(self):
+        SettingsAppWindow(self.root, self.timer)
 
     def draw(self):
         self.canvas.delete('all')

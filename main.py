@@ -689,23 +689,37 @@ class RefrigeratorApp:
                                            text=f"Текущая температура морозилки: {self.refrigerator.freezer_temperature}°C")
         self.freezer_temp_label.pack(anchor=tk.W)
 
+        turn_control_frame = tk.Frame(control_frame)
+        turn_control_frame.pack(pady=4, fill=tk.X)
+
+        temp_control_frame = tk.Frame(control_frame)
+        temp_control_frame.pack(pady=4, fill=tk.X)
+
+        door_control_frame = tk.Frame(control_frame)
+        door_control_frame.pack(pady=4, fill=tk.X)
+
+        product_control_frame = tk.Frame(control_frame)
+        product_control_frame.pack(pady=4, fill=tk.X)
+
+        repair_control_frame = tk.Frame(control_frame)
+        repair_control_frame.pack(pady=4, fill=tk.X)
+
         buttons = [
-            (Signal.TURN_ON.value, self.turn_on),
-            (Signal.TURN_OFF.value, self.turn_off),
-            (Signal.INCREASE_TEMPERATURE.value, self.increase_temp),
-            (Signal.DECREASE_TEMPERATURE.value, self.decrease_temp),
-            (Signal.OPEN_DOOR_TOP.value, self.open_door_top),
-            (Signal.CLOSE_DOOR_TOP.value, self.close_door_top),
-            (Signal.OPEN_DOOR_LOWER.value, self.open_door_lower),
-            (Signal.CLOSE_DOOR_LOWER.value, self.close_door_lower),
-            (Signal.REPAIR.value, self.repair),
+            (Signal.TURN_ON.value, self.turn_on, turn_control_frame),
+            (Signal.TURN_OFF.value, self.turn_off, turn_control_frame),
+            (Signal.INCREASE_TEMPERATURE.value, self.increase_temp, temp_control_frame),
+            (Signal.DECREASE_TEMPERATURE.value, self.decrease_temp, temp_control_frame),
+            (Signal.OPEN_DOOR_TOP.value, self.open_door_top, door_control_frame),
+            (Signal.CLOSE_DOOR_TOP.value, self.close_door_top, door_control_frame),
+            (Signal.OPEN_DOOR_LOWER.value, self.open_door_lower, door_control_frame),
+            (Signal.CLOSE_DOOR_LOWER.value, self.close_door_lower, door_control_frame),
+            (Signal.REPAIR.value, self.repair, repair_control_frame),
+            ("ДОБАВИТЬ ПРОДУКТ", self.add_product, product_control_frame),
+            ("УДАЛИТЬ ПРОДУКТ", self.remove_product, product_control_frame),
         ]
 
-        for text, command in buttons:
-            tk.Button(control_frame, text=text, command=command).pack(pady=2, fill=tk.X)
-
-        tk.Button(control_frame, text="ДОБАВИТЬ ПРОДУКТ", command=self.add_product).pack(pady=2, fill=tk.X)
-        tk.Button(control_frame, text="УДАЛИТЬ ПРОДУКТ", command=self.remove_product).pack(pady=2, fill=tk.X)
+        for text, command, frame in buttons:
+            tk.Button(frame, text=text, command=command).pack(fill=tk.X)
 
         self.expired_products_frame = tk.Frame(control_frame, pady=10)
         self.expired_products_frame.pack(fill=tk.X)

@@ -313,6 +313,83 @@ class Product:
             return False
 
 
+class DateMaskEntry(tk.Entry):
+    def __init__(self, parent, mask="__.__.____", font=None):
+        super().__init__(parent, font=font)
+        self.mask = mask
+        self._value = tk.StringVar()
+        self.configure(textvariable=self._value)
+        self._value.set(mask)
+        self._value.trace('w', self._validate)
+        self.bind('<KeyPress>', self._on_key_press)
+        self.bind('<KeyRelease>', self._on_key_release)
+        self.bind('<FocusIn>', self._on_focus_in)
+        self.bind('<FocusOut>', self._on_focus_out)
+
+        self.special_positions = [2, 5]
+        self.allowed_chars = set('0123456789')
+
+    def _on_focus_in(self, _):
+        if self._value.get() == self.mask:
+            self.icursor(0)
+
+    def _on_focus_out(self, _):
+        current = self._value.get()
+        if all(c == '_' or c == '.' for c in current):
+            self._value.set(self.mask)
+
+    def _on_key_press(self, event):
+        if event.keysym == 'BackSpace':
+            cursor_pos = self.index(tk.INSERT)
+            if cursor_pos > 0:
+                if cursor_pos - 1 in self.special_positions:
+                    self.icursor(cursor_pos - 1)
+                    return 'break'
+
+                current = self._value.get()
+                if cursor_pos - 1 not in self.special_positions:
+                    new_value = current[:cursor_pos - 1] + '_' + current[cursor_pos:]
+                    self._value.set(new_value)
+                    self.icursor(cursor_pos - 1)
+                return 'break'
+
+        if event.char and event.keysym != 'Delete':
+            cursor_pos = self.index(tk.INSERT)
+            if cursor_pos in self.special_positions:
+                self.icursor(cursor_pos + 1)
+
+            if event.char in self.allowed_chars:
+                current = self._value.get()
+                if cursor_pos < len(self.mask):
+                    new_value = current[:cursor_pos] + event.char + current[cursor_pos + 1:]
+                    self._value.set(new_value)
+
+                    if cursor_pos + 1 in self.special_positions:
+                        self.icursor(cursor_pos + 2)
+                    else:
+                        self.icursor(cursor_pos + 1)
+            return 'break'
+
+    def _on_key_release(self, event):
+        if event.keysym == 'Delete':
+            cursor_pos = self.index(tk.INSERT)
+            if cursor_pos < len(self.mask):
+                current = self._value.get()
+                if cursor_pos not in self.special_positions:
+                    new_value = current[:cursor_pos] + '_' + current[cursor_pos + 1:]
+                    self._value.set(new_value)
+            return 'break'
+
+    def _validate(self, *args):
+        current = self._value.get()
+        if len(current) > len(self.mask):
+            self._value.set(current[:len(self.mask)])
+
+    def get(self):
+        value = self._value.get()
+        return value if not all(c == '_' or c == '.' for c in value) else ''
+
+
 class BaseWindow(tk.Toplevel):
     def __init__(self, root, title):
         super().__init__(root)
@@ -334,14 +411,17 @@ class BaseWindow(tk.Toplevel):
         self.validation_errors = {}
 
     @staticmethod
-    def create_label_entry(label_text, parent, default_value=""):
+    def create_label_entry(label_text, parent, default_value="", use_mask=False):
         frame = tk.Frame(parent)
         frame.pack(fill=tk.X, pady=5)
 
         label = tk.Label(frame, text=label_text)
         label.pack(anchor="w")
 
-        entry = tk.Entry(frame, textvariable=tk.StringVar(value=default_value))
+        if use_mask:
+            entry = DateMaskEntry(frame)
+        else:
+            entry = tk.Entry(frame, textvariable=tk.StringVar(value=default_value))
         entry.pack(fill=tk.X)
 
         error_label = tk.Label(frame, text="", foreground="red")
@@ -373,7 +453,7 @@ class AddProductWindow(BaseWindow):
         self.product_combo.pack(fill=tk.X)
         self.product_combo.current(0)
 
-        self.expiry_entry, self.expiry_error = self.create_label_entry("Срок годности (ДД.ММ.ГГГГ):", self.main_frame)
+        self.expiry_entry, self.expiry_error = self.create_label_entry("Срок годности (ДД.ММ.ГГГГ):", self.main_frame, use_mask=True)
         self.expiry_entry.bind('<KeyRelease>', self.validate_expiry)
 
         button_frame = tk.Frame(self.main_frame)

@@ -182,7 +182,9 @@ class RefrigeratorFSM:
         elif self.state == State.THREAT_FAILURE:
             if signal == Signal.DOOR_OPEN_MORE_THAN_120:
                 self.state = State.MALFUNCTION
-            elif signal == Signal.CLOSE_DOOR_TOP:
+            elif signal == Signal.CLOSE_DOOR_TOP and not self.refrigerator.is_freezer_door_open:
+                self.state = State.COOLING
+            elif signal == Signal.CLOSE_DOOR_LOWER and not self.refrigerator.is_door_open:
                 self.state = State.COOLING
             elif signal == Signal.TURN_OFF:
                 self.state = State.OFF

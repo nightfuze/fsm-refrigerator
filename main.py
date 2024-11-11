@@ -899,6 +899,7 @@ class RefrigeratorApp:
 
     def repair(self):
         self.fsm.send_signal(Signal.REPAIR)
+        self.timer.stop()
 
     def on_click(self, event):
         print(event.x, event.y)

@@ -322,7 +322,6 @@ class DateMaskEntry(tk.Entry):
         self._value.set(mask)
         self._value.trace('w', self._validate)
         self.bind('<KeyPress>', self._on_key_press)
-        self.bind('<KeyRelease>', self._on_key_release)
         self.bind('<FocusIn>', self._on_focus_in)
         self.bind('<FocusOut>', self._on_focus_out)
 
@@ -361,6 +360,8 @@ class DateMaskEntry(tk.Entry):
             if event.char in self.allowed_chars:
                 current = self._value.get()
                 if cursor_pos < len(self.mask):
+                    if cursor_pos in self.special_positions:
+                        cursor_pos += 1
                     new_value = current[:cursor_pos] + event.char + current[cursor_pos + 1:]
                     self._value.set(new_value)
 
@@ -370,7 +371,6 @@ class DateMaskEntry(tk.Entry):
                         self.icursor(cursor_pos + 1)
             return 'break'
 
-    def _on_key_release(self, event):
         if event.keysym == 'Delete':
             cursor_pos = self.index(tk.INSERT)
             if cursor_pos < len(self.mask):
@@ -378,6 +378,10 @@ class DateMaskEntry(tk.Entry):
                 if cursor_pos not in self.special_positions:
                     new_value = current[:cursor_pos] + '_' + current[cursor_pos + 1:]
                     self._value.set(new_value)
+                    if cursor_pos + 1 in self.special_positions:
+                        self.icursor(cursor_pos + 2)
+                    else:
+                        self.icursor(cursor_pos + 1)
             return 'break'
 
     def _validate(self, *args):
@@ -453,7 +457,8 @@ class AddProductWindow(BaseWindow):
         self.product_combo.pack(fill=tk.X)
         self.product_combo.current(0)
 
-        self.expiry_entry, self.expiry_error = self.create_label_entry("Срок годности (ДД.ММ.ГГГГ):", self.main_frame, use_mask=True)
+        self.expiry_entry, self.expiry_error = self.create_label_entry("Срок годности (ДД.ММ.ГГГГ):", self.main_frame,
+                                                                       use_mask=True)
         self.expiry_entry.bind('<KeyRelease>', self.validate_expiry)
 
         button_frame = tk.Frame(self.main_frame)
@@ -562,10 +567,12 @@ class SettingsAppWindow(BaseWindow):
         product_frame = tk.Frame(self.main_frame)
         product_frame.pack(fill=tk.X, pady=5)
 
-        self.expiry_entry_1, self.expiry_error_1 = self.create_label_entry("Время до угрозы поломки:", self.main_frame, self.timer.time_to_threat_failure)
+        self.expiry_entry_1, self.expiry_error_1 = self.create_label_entry("Время до угрозы поломки:", self.main_frame,
+                                                                           self.timer.time_to_threat_failure)
         self.expiry_entry_1.bind('<KeyRelease>', self.validate_time_to_threat_failure)
 
-        self.expiry_entry_2, self.expiry_error_2 = self.create_label_entry("Время до поломки:", self.main_frame, self.timer.time_to_malfunction)
+        self.expiry_entry_2, self.expiry_error_2 = self.create_label_entry("Время до поломки:", self.main_frame,
+                                                                           self.timer.time_to_malfunction)
         self.expiry_entry_2.bind('<KeyRelease>', self.validate_time_to_malfunction)
 
         button_frame = tk.Frame(self.main_frame)
